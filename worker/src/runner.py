@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import io
 import importlib
+import inspect
 import traceback
 from contextlib import redirect_stdout
 
@@ -30,6 +31,7 @@ def run_mock_test(source: str) -> dict:
         compiled = compile(source, "<mock-test>", "exec")
         with redirect_stdout(buffer):
             exec(compiled, namespace, namespace)
+            auto_called = _auto_call_zero_arg_functions(namespace)
     except Exception as exc:
         trace = traceback.extract_tb(exc.__traceback__)
         final_frame = trace[-1] if trace else None
@@ -41,25 +43,39 @@ def run_mock_test(source: str) -> dict:
                 "message": str(exc) or "Mock test failed during execution.",
                 "line": final_frame.lineno if final_frame else None,
             },
-            "functions_discovered": _discover_functions(namespace),
+            "functions_discovered": _discover_functions(namespace, source),
+            "functions_auto_called": [],
         }
 
     return {
         "status": "passed",
         "stdout": buffer.getvalue(),
         "error": None,
-        "functions_discovered": _discover_functions(namespace),
+        "functions_discovered": _discover_functions(namespace, source),
+        "functions_auto_called": auto_called,
     }
 
 
-def _discover_functions(namespace: dict) -> list[str]:
+def _discover_functions(namespace: dict, source: str) -> list[str]:
     names: list[str] = []
     for key, value in namespace.items():
         if key.startswith("__"):
             continue
-        if callable(value):
+        if inspect.isfunction(value) and _is_user_defined(value, source):
             names.append(key)
     return sorted(names)
+
+
+def _auto_call_zero_arg_functions(namespace: dict) -> list[str]:
+    called: list[str] = []
+    for name, value in sorted(namespace.items()):
+        if name.startswith("__") or not inspect.isfunction(value):
+            continue
+        if not _is_zero_arg_callable(value):
+            continue
+        value()
+        called.append(name)
+    return called
 
 
 def _blocked_import(*args, **kwargs):
@@ -102,3 +118,24 @@ def _safe_builtins(buffer: io.StringIO) -> dict:
         "TypeError": TypeError,
         "input": _blocked_input,
     }
+
+
+def _is_zero_arg_callable(func) -> bool:
+    try:
+        signature = inspect.signature(func)
+    except (TypeError, ValueError):
+        return False
+
+    for parameter in signature.parameters.values():
+        if parameter.kind in (parameter.VAR_POSITIONAL, parameter.VAR_KEYWORD):
+            continue
+        if parameter.default is inspect._empty:
+            return False
+    return True
+
+
+def _is_user_defined(func, source: str) -> bool:
+    code = getattr(func, "__code__", None)
+    if code is None:
+        return False
+    return code.co_filename == "<mock-test>"

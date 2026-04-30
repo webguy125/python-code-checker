@@ -10,6 +10,7 @@ Deployment model:
 
 The frontend calls the deployed Worker URL directly with `POST /audit`.
 It can also request an optional mock test run of the repaired script by sending `run_mock: true`.
+The mock test auto-calls discovered zero-argument user-defined functions after executing the repaired script.
 
 Project layout:
 - `frontend/index.html`, `style.css`, `script.js`: single-page UI
