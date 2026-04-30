@@ -243,17 +243,17 @@ function renderMockTest(mockTest) {
   elements.mockEmpty.hidden = true;
   const stdout = typeof mockTest.stdout === "string" && mockTest.stdout.trim()
     ? mockTest.stdout
-    : "No output captured.";
+    : "No output was produced during the mock run.";
   elements.mockStdout.innerHTML = `<code>${escapeHtml(stdout)}</code>`;
 
   const functions = Array.isArray(mockTest.functions_discovered) ? mockTest.functions_discovered : [];
   const autoCalled = Array.isArray(mockTest.functions_auto_called) ? mockTest.functions_auto_called : [];
   elements.mockFunctions.innerHTML = functions.length
     ? functions.map((name) => `<span class="pill">${escapeHtml(name)}</span>`).join("")
-    : '<span class="pill">No functions discovered</span>';
+    : '<span class="pill">No user-defined functions found</span>';
   elements.mockCalledFunctions.innerHTML = autoCalled.length
     ? autoCalled.map((name) => `<span class="pill">${escapeHtml(name)}</span>`).join("")
-    : '<span class="pill">No zero-argument functions auto-called</span>';
+    : '<span class="pill">No zero-argument functions were executed</span>';
 
   if (mockTest.error && typeof mockTest.error === "object") {
     elements.mockErrorSection.hidden = false;

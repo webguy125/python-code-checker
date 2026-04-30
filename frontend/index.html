@@ -112,7 +112,7 @@
           <div class="card-head">
             <div>
               <p class="card-kicker">Mock Test</p>
-              <h2>Sandbox run</h2>
+              <h2>Sandbox execution</h2>
             </div>
             <div class="status-chip neutral" id="mock-summary">Mock test not requested</div>
           </div>
@@ -122,15 +122,15 @@
           </div>
           <div id="mock-results" class="mock-results" hidden>
             <div class="mock-section">
-              <h3>Stdout</h3>
+              <h3>Output from mock run</h3>
               <pre id="mock-stdout"><code>No output captured.</code></pre>
             </div>
             <div class="mock-section">
-              <h3>Functions discovered</h3>
+              <h3>Functions found in repaired code</h3>
               <div id="mock-functions" class="mock-functions"></div>
             </div>
             <div class="mock-section">
-              <h3>Auto-called functions</h3>
+              <h3>Zero-argument functions executed</h3>
               <div id="mock-called-functions" class="mock-functions"></div>
             </div>
             <div class="mock-section" id="mock-error-section" hidden>
@@ -148,7 +148,7 @@
           <ul class="info-list">
             <li>Sends code to the hosted Worker endpoint at <code>/audit</code>.</li>
             <li>Renders cleaned code and normalized issue details.</li>
-            <li>Optionally runs the repaired script in a restricted mock sandbox.</li>
+            <li>Optionally runs the repaired script in a restricted mock sandbox and shows what executed.</li>
             <li>Persists the last input locally so refreshes do not lose work.</li>
           </ul>
         </div>
