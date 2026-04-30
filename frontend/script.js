@@ -128,12 +128,35 @@ function extractIssues(payload) {
 
 function extractSummary(payload, issues) {
   const source = unwrapPayload(payload);
+  if (source?.error?.message && typeof source.error.message === "string") return source.error.message.trim();
   if (typeof source?.summary === "string" && source.summary.trim()) return source.summary.trim();
   if (typeof source?.message === "string" && source.message.trim()) return source.message.trim();
   if (typeof source?.detail === "string" && source.detail.trim()) return source.detail.trim();
   if (typeof source?.status === "string" && source.status.trim()) return source.status.trim();
   if (issues.length === 0) return "No issues detected.";
   return `${issues.length} issue${issues.length === 1 ? "" : "s"} detected.`;
+}
+
+function extractErrorDetails(payload) {
+  const source = unwrapPayload(payload);
+  const error = source?.error;
+  if (!error || typeof error !== "object") return null;
+
+  const message = typeof error.message === "string" && error.message.trim()
+    ? error.message.trim()
+    : "The audit could not be completed.";
+
+  const line = error.line ?? error.lineno;
+  const column = error.column ?? error.offset;
+  const text = typeof error.text === "string" ? error.text : "";
+
+  return {
+    message,
+    line,
+    column,
+    text,
+    type: typeof error.type === "string" ? error.type : "error",
+  };
 }
 
 function renderIssues(issues) {
@@ -264,11 +287,14 @@ async function runAudit() {
       : await response.text();
 
     if (!response.ok) {
-      const message =
-        typeof payload === "string"
+      const details = typeof payload === "string" ? null : extractErrorDetails(payload);
+      const message = details?.message
+        ?? (typeof payload === "string"
           ? payload
-          : payload?.error ?? payload?.message ?? `Audit failed with status ${response.status}.`;
-      throw new Error(message);
+          : payload?.message ?? `Audit failed with status ${response.status}.`);
+      const error = new Error(message);
+      error.payload = payload;
+      throw error;
     }
 
     renderResult(payload);
@@ -276,18 +302,44 @@ async function runAudit() {
     if (error.name === "AbortError") return;
     setStatus(elements.inputStatus, "Audit failed", "error");
     setStatus(elements.resultSummary, error.message || "The audit request could not be completed.", "error");
-    elements.cleanedOutput.innerHTML = "<code>Unable to load cleaned code. Check the endpoint response and try again.</code>";
-    renderIssues([
-      {
-        title: "Request error",
-        message: error.message || "The request failed before a usable audit result was returned.",
-        severity: "high",
-        line: "",
-        column: "",
-        rule: "network",
-        snippet: "",
-      },
-    ]);
+    const payload = error.payload;
+    const details = payload && typeof payload === "object" ? extractErrorDetails(payload) : null;
+    const source = payload && typeof payload === "object" ? unwrapPayload(payload) : null;
+    const fallbackCode = typeof source?.cleaned_code === "string" ? source.cleaned_code : "";
+
+    if (fallbackCode.trim()) {
+      elements.cleanedOutput.innerHTML = `<code>${escapeHtml(fallbackCode)}</code>`;
+      state.lastResultText = fallbackCode;
+    } else {
+      elements.cleanedOutput.innerHTML = "<code>Unable to load cleaned code. Check the endpoint response and try again.</code>";
+      state.lastResultText = "";
+    }
+
+    if (details) {
+      renderIssues([
+        {
+          title: details.type === "syntax_error" ? "Syntax error" : "Audit error",
+          message: details.message,
+          severity: "high",
+          line: details.line,
+          column: details.column,
+          rule: details.type,
+          snippet: details.text,
+        },
+      ]);
+    } else {
+      renderIssues([
+        {
+          title: "Request error",
+          message: error.message || "The request failed before a usable audit result was returned.",
+          severity: "high",
+          line: "",
+          column: "",
+          rule: "network",
+          snippet: "",
+        },
+      ]);
+    }
   } finally {
     state.abortController = null;
     setLoading(false);
