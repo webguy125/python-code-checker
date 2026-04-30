@@ -1,4 +1,5 @@
 const STORAGE_KEY = "python-code-checker:last-input";
+const API_ENDPOINT = "https://python-code-checker-api.webguy125.workers.dev/audit";
 const SAMPLE_CODE = `import math
 
 def area(radius):
@@ -248,7 +249,7 @@ async function runAudit() {
   setStatus(elements.resultSummary, "Submitting code...", "neutral");
 
   try {
-    const response = await fetch("/api/audit", {
+    const response = await fetch(API_ENDPOINT, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

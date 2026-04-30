@@ -6,3 +6,6 @@ __pycache__/
 .venv/
 venv/
 .python-version
+worker/.venv-workers/
+worker/python_modules/
+uv.lock
