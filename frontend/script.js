@@ -10,6 +10,7 @@ print(area(5))
 
 const elements = {
   codeInput: document.getElementById("code-input"),
+  runMock: document.getElementById("run-mock"),
   runAudit: document.getElementById("run-audit"),
   loadSample: document.getElementById("load-sample"),
   clearInput: document.getElementById("clear-input"),
@@ -19,6 +20,13 @@ const elements = {
   issuesEmpty: document.getElementById("issues-empty"),
   resultSummary: document.getElementById("result-summary"),
   inputStatus: document.getElementById("input-status"),
+  mockSummary: document.getElementById("mock-summary"),
+  mockEmpty: document.getElementById("mock-empty"),
+  mockResults: document.getElementById("mock-results"),
+  mockStdout: document.getElementById("mock-stdout"),
+  mockFunctions: document.getElementById("mock-functions"),
+  mockErrorSection: document.getElementById("mock-error-section"),
+  mockError: document.getElementById("mock-error"),
 };
 
 const state = {
@@ -126,6 +134,12 @@ function extractIssues(payload) {
   return [];
 }
 
+function extractMockTest(payload) {
+  const source = unwrapPayload(payload);
+  if (!source?.mock_test || typeof source.mock_test !== "object") return null;
+  return source.mock_test;
+}
+
 function extractSummary(payload, issues) {
   const source = unwrapPayload(payload);
   if (source?.error?.message && typeof source.error.message === "string") return source.error.message.trim();
@@ -203,18 +217,55 @@ function setEmptyState(message) {
 function renderResult(payload) {
   const issues = extractIssues(payload);
   const cleanedCode = extractCleanedCode(payload);
+  const mockTest = extractMockTest(payload);
   const summary = extractSummary(payload, issues);
 
   elements.cleanedOutput.innerHTML = `<code>${escapeHtml(cleanedCode)}</code>`;
   state.lastResultText = cleanedCode;
   state.hasFreshResult = true;
   renderIssues(issues);
+  renderMockTest(mockTest);
   setStatus(elements.resultSummary, summary, issues.length ? "warn" : "ok");
   setStatus(elements.inputStatus, "Audit complete", issues.length ? "warn" : "ok");
 }
 
+function renderMockTest(mockTest) {
+  if (!mockTest) {
+    elements.mockResults.hidden = true;
+    elements.mockEmpty.hidden = false;
+    elements.mockEmpty.textContent = "Mock test not requested for this run.";
+    setStatus(elements.mockSummary, "Mock test not requested", "neutral");
+    return;
+  }
+
+  elements.mockResults.hidden = false;
+  elements.mockEmpty.hidden = true;
+  const stdout = typeof mockTest.stdout === "string" && mockTest.stdout.trim()
+    ? mockTest.stdout
+    : "No output captured.";
+  elements.mockStdout.innerHTML = `<code>${escapeHtml(stdout)}</code>`;
+
+  const functions = Array.isArray(mockTest.functions_discovered) ? mockTest.functions_discovered : [];
+  elements.mockFunctions.innerHTML = functions.length
+    ? functions.map((name) => `<span class="pill">${escapeHtml(name)}</span>`).join("")
+    : '<span class="pill">No functions discovered</span>';
+
+  if (mockTest.error && typeof mockTest.error === "object") {
+    elements.mockErrorSection.hidden = false;
+    const lineText = mockTest.error.line ? `Line ${mockTest.error.line}: ` : "";
+    elements.mockError.textContent = `${lineText}${mockTest.error.type}: ${mockTest.error.message}`;
+    setStatus(elements.mockSummary, "Mock test failed", "error");
+    return;
+  }
+
+  elements.mockErrorSection.hidden = true;
+  elements.mockError.textContent = "";
+  setStatus(elements.mockSummary, "Mock test passed", "ok");
+}
+
 function setLoading(isLoading) {
   elements.runAudit.disabled = isLoading;
+  elements.runMock.disabled = isLoading;
   elements.copyOutput.disabled = isLoading;
   elements.loadSample.disabled = isLoading;
   elements.clearInput.disabled = isLoading;
@@ -277,7 +328,7 @@ async function runAudit() {
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ code }),
+      body: JSON.stringify({ code, run_mock: elements.runMock.checked }),
       signal: state.abortController.signal,
     });
 
@@ -314,6 +365,7 @@ async function runAudit() {
       elements.cleanedOutput.innerHTML = "<code>Unable to load cleaned code. Check the endpoint response and try again.</code>";
       state.lastResultText = "";
     }
+    renderMockTest(null);
 
     if (details) {
       renderIssues([
@@ -388,8 +440,10 @@ elements.clearInput.addEventListener("click", () => {
   setInput("");
   state.lastResultText = "";
   state.hasFreshResult = false;
+  elements.runMock.checked = false;
   elements.cleanedOutput.innerHTML = "<code>Run an audit to see cleaned code here.</code>";
   setEmptyState("No audit has been run yet. Results will appear here after you submit code.");
+  renderMockTest(null);
   setStatus(elements.resultSummary, "Waiting for first audit", "neutral");
   setStatus(elements.inputStatus, "Paste Python code first", "error");
 });
@@ -416,3 +470,4 @@ document.addEventListener("keydown", (event) => {
 });
 
 setEmptyState("No audit has been run yet. Results will appear here after you submit code.");
+renderMockTest(null);

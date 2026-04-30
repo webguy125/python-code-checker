@@ -6,6 +6,7 @@ from urllib.parse import urlparse
 from workers import Response, WorkerEntrypoint
 
 from cleaner import clean_python_code
+from runner import run_mock_test
 
 
 JSON_HEADERS = {
@@ -80,28 +81,18 @@ class Default(WorkerEntrypoint):
                 status=400,
             )
 
-        try:
-            cleaned_code, issues_found = clean_python_code(code)
-        except SyntaxError as exc:
-            return _json_response(
-                {
-                    "cleaned_code": code,
-                    "error": {
-                        "type": "syntax_error",
-                        "message": exc.msg,
-                        "line": exc.lineno,
-                        "column": exc.offset,
-                        "text": exc.text.strip() if exc.text else None,
-                    },
-                    "issues_found": [],
-                },
-                status=400,
-            )
+        cleaned_code, issues_found = clean_python_code(code)
+        run_mock = _extract_run_mock(payload)
+        mock_test = None
+
+        if run_mock and not _has_unresolved_syntax_issue(issues_found):
+            mock_test = run_mock_test(cleaned_code)
 
         return _json_response(
             {
                 "cleaned_code": cleaned_code,
                 "issues_found": issues_found,
+                "mock_test": mock_test,
                 "summary": (
                     "No issues detected."
                     if not issues_found
@@ -143,6 +134,19 @@ def _extract_code(payload) -> str | None:
         return None
 
     return value if isinstance(value, str) else None
+
+
+def _extract_run_mock(payload) -> bool:
+    if not isinstance(payload, dict):
+        return False
+    return bool(payload.get("run_mock"))
+
+
+def _has_unresolved_syntax_issue(issues_found: list[dict]) -> bool:
+    for issue in issues_found:
+        if issue.get("type") == "syntax_error":
+            return True
+    return False
 
 
 def _json_response(payload: dict, status: int = 200) -> Response:

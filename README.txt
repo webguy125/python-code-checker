@@ -9,11 +9,13 @@ Deployment model:
 - Backend: Cloudflare Workers (Python runtime)
 
 The frontend calls the deployed Worker URL directly with `POST /audit`.
+It can also request an optional mock test run of the repaired script by sending `run_mock: true`.
 
 Project layout:
 - `frontend/index.html`, `style.css`, `script.js`: single-page UI
 - `worker/src/entry.py`: Worker request handling
 - `worker/src/cleaner.py`: Python audit and cleanup logic
+- `worker/src/runner.py`: restricted mock execution sandbox for repaired code
 
 Deploy:
 1. Deploy the Worker from `worker/` with `uv run pywrangler deploy`.

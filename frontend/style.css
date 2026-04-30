@@ -247,6 +247,23 @@ button {
   gap: 10px;
   flex-wrap: wrap;
   justify-content: flex-end;
+  align-items: center;
+}
+
+.toggle-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  padding: 0 14px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--text);
+}
+
+.toggle-option input {
+  accent-color: var(--accent-strong);
 }
 
 .primary-button,
@@ -374,6 +391,22 @@ pre {
 .issues-list {
   display: grid;
   gap: 12px;
+}
+
+.mock-results {
+  display: grid;
+  gap: 14px;
+}
+
+.mock-section h3 {
+  margin: 0 0 10px;
+  font-size: 1rem;
+}
+
+.mock-functions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 .issue-card {
