@@ -89,6 +89,11 @@ def _normalize_source(source: str, issues: list[Issue]) -> str:
             blank_run = 0 if line.strip() else blank_run + 1
             continue
 
+        if line.startswith(r"\t"):
+            saw_tabs = True
+            literal_tabs = len(line) - len(line.lstrip("\\t"))
+            line = ("    " * literal_tabs) + line[literal_tabs:]
+
         if line.rstrip() != line:
             saw_trailing_whitespace = True
         line = line.rstrip()
@@ -151,6 +156,7 @@ def _repair_broken_python(source: str) -> tuple[str, list[Issue]]:
             continue
 
         blank_run = 0
+        original_line = _replace_leading_literal_tabs(original_line)
         content = original_line.lstrip(" \t").rstrip()
 
         fixed_quotes = _fix_simple_quote_mismatch(content)
@@ -430,8 +436,20 @@ def _toggle_triple_quote_state(line: str, in_triple_string: bool, current_delimi
 
 
 def _indent_units(line: str) -> int:
+    line = _replace_leading_literal_tabs(line)
     expanded = line.replace("\t", "    ")
     leading_spaces = len(expanded) - len(expanded.lstrip(" "))
     if leading_spaces <= 0:
         return 0
     return max(1, leading_spaces // 4)
+
+
+def _replace_leading_literal_tabs(line: str) -> str:
+    count = 0
+    remaining = line
+    while remaining.startswith(r"\t"):
+        count += 1
+        remaining = remaining[2:]
+    if count == 0:
+        return line
+    return ("    " * count) + remaining
