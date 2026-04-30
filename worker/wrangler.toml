@@ -1,0 +1,5 @@
+"$schema" = "../node_modules/wrangler/config-schema.json"
+name = "python-code-checker-api"
+main = "src/entry.py"
+compatibility_date = "2026-04-30"
+compatibility_flags = ["python_workers"]

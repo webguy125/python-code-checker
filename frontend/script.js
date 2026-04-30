@@ -1,0 +1,365 @@
+const STORAGE_KEY = "python-code-checker:last-input";
+const SAMPLE_CODE = `import math
+
+def area(radius):
+    return math.pi * radius * radius
+
+print(area(5))
+`;
+
+const elements = {
+  codeInput: document.getElementById("code-input"),
+  runAudit: document.getElementById("run-audit"),
+  loadSample: document.getElementById("load-sample"),
+  clearInput: document.getElementById("clear-input"),
+  copyOutput: document.getElementById("copy-output"),
+  cleanedOutput: document.getElementById("cleaned-output"),
+  issuesList: document.getElementById("issues-list"),
+  issuesEmpty: document.getElementById("issues-empty"),
+  resultSummary: document.getElementById("result-summary"),
+  inputStatus: document.getElementById("input-status"),
+};
+
+const state = {
+  abortController: null,
+  lastResultText: "",
+  hasFreshResult: false,
+};
+
+function setStatus(target, text, tone = "neutral") {
+  target.textContent = text;
+  target.classList.remove("neutral", "ok", "warn", "error");
+  target.classList.add(tone);
+}
+
+function escapeHtml(value) {
+  return String(value)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+}
+
+function formatLocation(issue) {
+  const line = issue.line ?? issue.lineno ?? issue.row ?? issue.line_number;
+  const column = issue.column ?? issue.col ?? issue.column_number;
+  if (line !== undefined && line !== null && column !== undefined && column !== null) return `Line ${line}, col ${column}`;
+  if (line !== undefined && line !== null) return `Line ${line}`;
+  if (column !== undefined && column !== null) return `Col ${column}`;
+  return "Location not provided";
+}
+
+function normalizeSeverity(issue) {
+  const raw = String(issue.severity ?? issue.level ?? issue.kind ?? "info").toLowerCase();
+  if (["error", "critical", "high"].includes(raw)) return "high";
+  if (["warning", "warn", "medium", "moderate"].includes(raw)) return "medium";
+  if (["info", "note", "low"].includes(raw)) return "low";
+  return "low";
+}
+
+function normalizeIssue(issue, index) {
+  if (typeof issue === "string") {
+    return {
+      title: `Issue ${index + 1}`,
+      message: issue,
+      severity: "low",
+      location: "Location not provided",
+      rule: "",
+      snippet: "",
+    };
+  }
+
+  const message = issue.message ?? issue.detail ?? issue.description ?? issue.text ?? JSON.stringify(issue);
+  const title = issue.title ?? issue.name ?? issue.rule ?? `Issue ${index + 1}`;
+  const rule = issue.rule ?? issue.code ?? issue.type ?? "";
+  const snippet = issue.snippet ?? issue.line_text ?? issue.source ?? "";
+
+  return {
+    title,
+    message,
+    severity: normalizeSeverity(issue),
+    location: formatLocation(issue),
+    rule,
+    snippet,
+  };
+}
+
+function unwrapPayload(payload) {
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) return payload;
+  const nested = payload.data ?? payload.audit ?? payload.result ?? payload.payload;
+  if (!nested || typeof nested !== "object" || Array.isArray(nested)) return payload;
+  return { ...payload, ...nested };
+}
+
+function extractCleanedCode(payload) {
+  const source = unwrapPayload(payload);
+  const candidates = [
+    source?.cleaned_code,
+    source?.cleanedCode,
+    source?.fixed_code,
+    source?.fixedCode,
+    source?.output,
+    source?.code,
+  ];
+  for (const candidate of candidates) {
+    if (typeof candidate === "string" && candidate.trim()) return candidate;
+  }
+  if (typeof source === "string" && source.trim()) return source;
+  return "No cleaned code was returned.";
+}
+
+function extractIssues(payload) {
+  const source = unwrapPayload(payload);
+  const candidates = [
+    source?.issues_found,
+    source?.issues,
+    source?.warnings,
+    source?.findings,
+    source?.errors,
+    source?.messages,
+  ];
+  for (const candidate of candidates) {
+    if (Array.isArray(candidate)) return candidate.map(normalizeIssue);
+  }
+  return [];
+}
+
+function extractSummary(payload, issues) {
+  const source = unwrapPayload(payload);
+  if (typeof source?.summary === "string" && source.summary.trim()) return source.summary.trim();
+  if (typeof source?.message === "string" && source.message.trim()) return source.message.trim();
+  if (typeof source?.detail === "string" && source.detail.trim()) return source.detail.trim();
+  if (typeof source?.status === "string" && source.status.trim()) return source.status.trim();
+  if (issues.length === 0) return "No issues detected.";
+  return `${issues.length} issue${issues.length === 1 ? "" : "s"} detected.`;
+}
+
+function renderIssues(issues) {
+  if (!issues.length) {
+    elements.issuesList.hidden = true;
+    elements.issuesEmpty.hidden = false;
+    elements.issuesEmpty.textContent = "No issues were reported by the audit.";
+    return;
+  }
+
+  elements.issuesList.hidden = false;
+  elements.issuesEmpty.hidden = true;
+  elements.issuesList.innerHTML = issues
+    .map((issue) => {
+      const rule = issue.rule ? `<span class="pill">${escapeHtml(issue.rule)}</span>` : "";
+      const snippet = issue.snippet
+        ? `<div class="issue-code">${escapeHtml(issue.snippet)}</div>`
+        : "";
+
+      return `
+        <article class="issue-card">
+          <div class="issue-top">
+            <h3 class="issue-title">${escapeHtml(issue.title)}</h3>
+            <div class="issue-meta">
+              <span class="pill ${issue.severity}">${escapeHtml(issue.severity)}</span>
+              <span class="pill">${escapeHtml(issue.location)}</span>
+              ${rule}
+            </div>
+          </div>
+          <p class="issue-message">${escapeHtml(issue.message)}</p>
+          ${snippet}
+        </article>
+      `;
+    })
+    .join("");
+}
+
+function setEmptyState(message) {
+  elements.issuesList.hidden = true;
+  elements.issuesEmpty.hidden = false;
+  elements.issuesEmpty.textContent = message;
+}
+
+function renderResult(payload) {
+  const issues = extractIssues(payload);
+  const cleanedCode = extractCleanedCode(payload);
+  const summary = extractSummary(payload, issues);
+
+  elements.cleanedOutput.innerHTML = `<code>${escapeHtml(cleanedCode)}</code>`;
+  state.lastResultText = cleanedCode;
+  state.hasFreshResult = true;
+  renderIssues(issues);
+  setStatus(elements.resultSummary, summary, issues.length ? "warn" : "ok");
+  setStatus(elements.inputStatus, "Audit complete", issues.length ? "warn" : "ok");
+}
+
+function setLoading(isLoading) {
+  elements.runAudit.disabled = isLoading;
+  elements.copyOutput.disabled = isLoading;
+  elements.loadSample.disabled = isLoading;
+  elements.clearInput.disabled = isLoading;
+  if (isLoading) {
+    setStatus(elements.inputStatus, "Running audit...", "neutral");
+  }
+}
+
+function readSavedInput() {
+  try {
+    return localStorage.getItem(STORAGE_KEY) ?? "";
+  } catch {
+    return "";
+  }
+}
+
+function saveInput(value) {
+  try {
+    localStorage.setItem(STORAGE_KEY, value);
+  } catch {
+    // Ignore storage failures in private browsing or locked-down environments.
+  }
+}
+
+async function copyText(value) {
+  if (!value.trim()) return;
+  if (navigator.clipboard?.writeText) {
+    await navigator.clipboard.writeText(value);
+    return;
+  }
+  const temp = document.createElement("textarea");
+  temp.value = value;
+  temp.setAttribute("readonly", "true");
+  temp.style.position = "fixed";
+  temp.style.left = "-9999px";
+  document.body.appendChild(temp);
+  temp.select();
+  document.execCommand("copy");
+  temp.remove();
+}
+
+async function runAudit() {
+  const code = elements.codeInput.value.trim();
+  if (!code) {
+    setStatus(elements.inputStatus, "Paste Python code first", "error");
+    return;
+  }
+
+  if (state.abortController) {
+    state.abortController.abort();
+  }
+
+  state.abortController = new AbortController();
+  setLoading(true);
+  setStatus(elements.resultSummary, "Submitting code...", "neutral");
+
+  try {
+    const response = await fetch("/api/audit", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ code }),
+      signal: state.abortController.signal,
+    });
+
+    const contentType = response.headers.get("content-type") || "";
+    const payload = contentType.includes("application/json")
+      ? await response.json()
+      : await response.text();
+
+    if (!response.ok) {
+      const message =
+        typeof payload === "string"
+          ? payload
+          : payload?.error ?? payload?.message ?? `Audit failed with status ${response.status}.`;
+      throw new Error(message);
+    }
+
+    renderResult(payload);
+  } catch (error) {
+    if (error.name === "AbortError") return;
+    setStatus(elements.inputStatus, "Audit failed", "error");
+    setStatus(elements.resultSummary, error.message || "The audit request could not be completed.", "error");
+    elements.cleanedOutput.innerHTML = "<code>Unable to load cleaned code. Check the endpoint response and try again.</code>";
+    renderIssues([
+      {
+        title: "Request error",
+        message: error.message || "The request failed before a usable audit result was returned.",
+        severity: "high",
+        line: "",
+        column: "",
+        rule: "network",
+        snippet: "",
+      },
+    ]);
+  } finally {
+    state.abortController = null;
+    setLoading(false);
+  }
+}
+
+function setInput(value) {
+  elements.codeInput.value = value;
+  saveInput(value);
+}
+
+function markResultsStale() {
+  if (!state.hasFreshResult) return;
+  state.hasFreshResult = false;
+  setStatus(elements.resultSummary, "Input changed. Run the audit again.", "warn");
+  setStatus(elements.inputStatus, "Results are stale", "warn");
+}
+
+elements.codeInput.value = readSavedInput() || SAMPLE_CODE;
+setStatus(elements.inputStatus, elements.codeInput.value.trim() ? "Ready to audit" : "Paste Python code first", elements.codeInput.value.trim() ? "neutral" : "error");
+elements.cleanedOutput.innerHTML = "<code>Run an audit to see cleaned code here.</code>";
+
+elements.codeInput.addEventListener("input", () => {
+  saveInput(elements.codeInput.value);
+  if (!elements.codeInput.value.trim()) {
+    state.hasFreshResult = false;
+    setStatus(elements.inputStatus, "Paste Python code first", "error");
+    setStatus(elements.resultSummary, "Waiting for first audit", "neutral");
+    return;
+  }
+
+  if (state.lastResultText) {
+    markResultsStale();
+    return;
+  }
+
+  setStatus(elements.inputStatus, "Ready to audit", "neutral");
+});
+
+elements.runAudit.addEventListener("click", runAudit);
+elements.loadSample.addEventListener("click", () => {
+  setInput(SAMPLE_CODE);
+  setStatus(elements.inputStatus, "Sample loaded", "ok");
+});
+elements.clearInput.addEventListener("click", () => {
+  setInput("");
+  state.lastResultText = "";
+  state.hasFreshResult = false;
+  elements.cleanedOutput.innerHTML = "<code>Run an audit to see cleaned code here.</code>";
+  setEmptyState("No audit has been run yet. Results will appear here after you submit code.");
+  setStatus(elements.resultSummary, "Waiting for first audit", "neutral");
+  setStatus(elements.inputStatus, "Paste Python code first", "error");
+});
+elements.copyOutput.addEventListener("click", async () => {
+  if (!state.hasFreshResult || !state.lastResultText.trim()) {
+    setStatus(elements.resultSummary, "Nothing to copy yet", "warn");
+    return;
+  }
+  const output = state.lastResultText;
+
+  try {
+    await copyText(output);
+    setStatus(elements.resultSummary, "Cleaned code copied", "ok");
+  } catch {
+    setStatus(elements.resultSummary, "Copy failed", "error");
+  }
+});
+
+document.addEventListener("keydown", (event) => {
+  if ((event.ctrlKey || event.metaKey) && event.key === "Enter") {
+    event.preventDefault();
+    runAudit();
+  }
+});
+
+setEmptyState("No audit has been run yet. Results will appear here after you submit code.");

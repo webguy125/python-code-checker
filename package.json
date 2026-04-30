@@ -1,0 +1,9 @@
+{
+  "name": "python-code-checker",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "check:frontend": "node --check frontend/script.js"
+  }
+}

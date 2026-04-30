@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Python Code Checker - audit Python code, review issues, and inspect cleaned output.">
+  <title>Python Code Checker</title>
+  <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+  <div class="page-shell">
+    <div class="background-glow background-glow-a" aria-hidden="true"></div>
+    <div class="background-glow background-glow-b" aria-hidden="true"></div>
+
+    <header class="hero">
+      <div class="hero-copy">
+        <p class="eyebrow">Cloudflare Pages micro-tool</p>
+        <h1>Python Code Checker</h1>
+        <p class="lede">
+          Paste Python, run an audit, and review a cleaned version plus actionable findings in one pass.
+        </p>
+        <div class="hero-stats" aria-label="Highlights">
+          <span>Same-origin API</span>
+          <span>No auth</span>
+          <span>Responsive layout</span>
+        </div>
+      </div>
+
+      <div class="hero-panel">
+        <div class="panel-card accent-card">
+          <p class="panel-label">Workflow</p>
+          <p class="panel-title">Inspect, clean, ship</p>
+          <p class="panel-text">Designed for fast reviews with a focused editor, result surface, and compact issue summaries.</p>
+        </div>
+      </div>
+    </header>
+
+    <main class="layout">
+      <section class="workspace" aria-label="Python audit workspace">
+        <div class="card editor-card">
+          <div class="card-head">
+            <div>
+              <p class="card-kicker">Input</p>
+              <h2>Paste Python code</h2>
+            </div>
+            <div class="card-actions">
+              <button type="button" class="ghost-button" id="load-sample">Load sample</button>
+              <button type="button" class="ghost-button" id="clear-input">Clear</button>
+            </div>
+          </div>
+
+          <label class="sr-only" for="code-input">Python source code</label>
+          <textarea
+            id="code-input"
+            name="code"
+            spellcheck="false"
+            autocapitalize="off"
+            autocomplete="off"
+            autocorrect="off"
+            placeholder="def greet(name):&#10;    print(f'Hello, {name}!')&#10;&#10;greet('world')"
+          ></textarea>
+
+          <div class="editor-footer">
+            <div class="status-chip" id="input-status">Ready to audit</div>
+            <div class="hint">Tip: press Ctrl + Enter to run the audit.</div>
+          </div>
+        </div>
+
+        <aside class="ad-slot ad-slot-inline" aria-label="Advertisement placeholder">
+          <span class="ad-label">Ad placeholder</span>
+          <strong>Sponsored placement</strong>
+          <p>Reserved for a responsive ad unit. This slot stays visible without interrupting the workflow.</p>
+        </aside>
+
+        <div class="card result-card">
+          <div class="card-head">
+            <div>
+              <p class="card-kicker">Output</p>
+              <h2>Cleaned code</h2>
+            </div>
+            <div class="card-actions">
+              <button type="button" class="ghost-button" id="copy-output">Copy output</button>
+              <button type="button" class="primary-button" id="run-audit">Run audit</button>
+            </div>
+          </div>
+
+          <div class="code-frame">
+            <pre id="cleaned-output" aria-live="polite"><code>Run an audit to see cleaned code here.</code></pre>
+          </div>
+        </div>
+
+        <div class="card issues-card">
+          <div class="card-head">
+            <div>
+              <p class="card-kicker">Findings</p>
+              <h2>Issues list</h2>
+            </div>
+            <div class="status-chip neutral" id="result-summary">Waiting for first audit</div>
+          </div>
+
+          <div id="issues-empty" class="empty-state">
+            No audit has been run yet. Results will appear here after you submit code.
+          </div>
+          <div id="issues-list" class="issues-list" hidden></div>
+        </div>
+      </section>
+
+      <aside class="sidebar" aria-label="Supporting content">
+        <div class="card info-card">
+          <p class="card-kicker">Behavior</p>
+          <h2>What this page does</h2>
+          <ul class="info-list">
+            <li>Sends code to the same-origin <code>/api/audit</code> endpoint.</li>
+            <li>Renders cleaned code and normalized issue details.</li>
+            <li>Persists the last input locally so refreshes do not lose work.</li>
+          </ul>
+        </div>
+
+        <aside class="ad-slot ad-slot-rail" aria-label="Advertisement placeholder">
+          <span class="ad-label">Ad placeholder</span>
+          <strong>Rail unit</strong>
+          <p>Reserved for a medium rectangle or sticky sponsor card on wider screens.</p>
+        </aside>
+
+        <div class="card tips-card">
+          <p class="card-kicker">Shortcuts</p>
+          <h2>Fast interaction</h2>
+          <ul class="info-list">
+            <li><code>Ctrl</code> + <code>Enter</code> runs the audit.</li>
+            <li>Copy cleaned code with one click.</li>
+            <li>Errors are shown inline and keep the workspace usable.</li>
+          </ul>
+        </div>
+      </aside>
+    </main>
+  </div>
+
+  <script src="./script.js"></script>
+</body>
+</html>
