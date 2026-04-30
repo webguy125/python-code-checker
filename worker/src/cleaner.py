@@ -64,6 +64,8 @@ def clean_python_code(source: str) -> tuple[str, list[dict[str, int | str]]]:
 
     parsed_tree, import_issues = _normalize_imports(parsed_tree)
     issues.extend(import_issues)
+    parsed_tree, return_issues = _repair_missing_fallback_returns(parsed_tree)
+    issues.extend(return_issues)
 
     ast.fix_missing_locations(parsed_tree)
     cleaned = ast.unparse(parsed_tree)
@@ -238,6 +240,33 @@ def _normalize_imports(tree: ast.Module) -> tuple[ast.Module, list[Issue]]:
     return tree, issues
 
 
+def _repair_missing_fallback_returns(tree: ast.Module) -> tuple[ast.Module, list[Issue]]:
+    issues: list[Issue] = []
+
+    for node in tree.body:
+        if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            continue
+
+        fallback_name = _find_fallback_return_name(node)
+        if not fallback_name:
+            continue
+
+        node.body.append(
+            ast.Return(
+                value=ast.Name(id=fallback_name, ctx=ast.Load())
+            )
+        )
+        issues.append(
+            Issue(
+                "returns",
+                f"Added a fallback return for '{fallback_name}' to keep the function return path consistent.",
+                severity="medium",
+            )
+        )
+
+    return tree, issues
+
+
 def _rebuild_import_block(nodes: list[ast.stmt]) -> list[ast.stmt]:
     future_names: set[tuple[str, str | None]] = set()
     plain_imports: set[tuple[str, str | None]] = set()
@@ -405,6 +434,58 @@ def _is_docstring(node: ast.stmt) -> bool:
         and isinstance(node.value, ast.Constant)
         and isinstance(node.value.value, str)
     )
+
+
+def _find_fallback_return_name(node: ast.FunctionDef | ast.AsyncFunctionDef) -> str | None:
+    if not node.body or isinstance(node.body[-1], ast.Return):
+        return None
+
+    last_stmt = node.body[-1]
+    if not isinstance(last_stmt, ast.If):
+        return None
+
+    if last_stmt.orelse:
+        return None
+
+    returned_name = _single_returned_name(last_stmt.body)
+    if not returned_name:
+        return None
+
+    assigned_before = _last_assigned_name_before_if(node.body[:-1])
+    if assigned_before != returned_name:
+        return None
+
+    return returned_name
+
+
+def _single_returned_name(statements: list[ast.stmt]) -> str | None:
+    if len(statements) < 1:
+        return None
+
+    last_stmt = statements[-1]
+    if not isinstance(last_stmt, ast.Return):
+        return None
+
+    value = last_stmt.value
+    if not isinstance(value, ast.Name):
+        return None
+
+    for stmt in statements[:-1]:
+        if isinstance(stmt, (ast.Return, ast.Raise, ast.Break, ast.Continue)):
+            return None
+
+    return value.id
+
+
+def _last_assigned_name_before_if(statements: list[ast.stmt]) -> str | None:
+    for stmt in reversed(statements):
+        if isinstance(stmt, ast.Assign) and len(stmt.targets) == 1 and isinstance(stmt.targets[0], ast.Name):
+            return stmt.targets[0].id
+        if isinstance(stmt, ast.AnnAssign) and isinstance(stmt.target, ast.Name):
+            return stmt.target.id
+        if isinstance(stmt, (ast.Return, ast.Raise)):
+            return None
+    return None
 
 
 def _multiline_string_lines(source: str) -> set[int]:
