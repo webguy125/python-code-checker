@@ -91,6 +91,8 @@ def _auto_call_zero_arg_functions(namespace: dict) -> list[str]:
     for name, value in sorted(namespace.items()):
         if name.startswith("__") or not inspect.isfunction(value):
             continue
+        if inspect.iscoroutinefunction(value):
+            continue
         if not _is_zero_arg_callable(value):
             continue
         value()
@@ -102,6 +104,8 @@ def _sample_call_functions(namespace: dict) -> list[SampleCall]:
     reports: list[SampleCall] = []
     for name, value in sorted(namespace.items()):
         if name.startswith("__") or not inspect.isfunction(value):
+            continue
+        if inspect.iscoroutinefunction(value):
             continue
         if not _is_user_defined(value) or _is_zero_arg_callable(value):
             continue
