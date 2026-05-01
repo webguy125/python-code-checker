@@ -14,6 +14,7 @@ _BLOCK_HEADER_RE = re.compile(
 _DEDENT_HEADER_RE = re.compile(r"^(elif|else|except|finally|case)\b")
 _SNAKE_CASE_EDGE_RE = re.compile(r"(?<!^)(?=[A-Z])")
 _TERMINAL_NODES = (ast.Return, ast.Raise, ast.Continue, ast.Break)
+_FROM_IMPORT_LINE_RE = re.compile(r"^from\s+([.\w]+)\s+import\s+(.+)$")
 
 
 @dataclass(frozen=True)
@@ -67,6 +68,8 @@ def clean_python_code(source: str, style_mode: str = "standard") -> tuple[str, l
 
     parsed_tree, import_issues = _normalize_imports(parsed_tree)
     issues.extend(import_issues)
+    parsed_tree, duplicate_import_stmt_issues = _remove_duplicate_import_statements(parsed_tree)
+    issues.extend(duplicate_import_stmt_issues)
     parsed_tree, unused_import_issues = _remove_unused_imports(parsed_tree)
     issues.extend(unused_import_issues)
     parsed_tree, return_issues = _repair_missing_fallback_returns(parsed_tree)
@@ -91,9 +94,9 @@ def _normalize_source(source: str, issues: list[Issue]) -> str:
     lines = source.split("\n")
     protected_lines = _multiline_string_lines(source)
     normalized_lines: list[str] = []
-    saw_trailing_whitespace = False
-    saw_tabs = False
-    compressed_blank_lines = False
+    trailing_whitespace_line: int | None = None
+    tabs_line: int | None = None
+    blank_lines_line: int | None = None
     blank_run = 0
 
     for line_number, line in enumerate(lines, start=1):
@@ -103,34 +106,38 @@ def _normalize_source(source: str, issues: list[Issue]) -> str:
             continue
 
         if line.startswith(r"\t"):
-            saw_tabs = True
+            if tabs_line is None:
+                tabs_line = line_number
             line = _replace_leading_literal_tabs(line)
 
         if line.rstrip() != line:
-            saw_trailing_whitespace = True
+            if trailing_whitespace_line is None:
+                trailing_whitespace_line = line_number
         line = line.rstrip()
 
         leading = len(line) - len(line.lstrip(" \t"))
         if leading and "\t" in line[:leading]:
-            saw_tabs = True
+            if tabs_line is None:
+                tabs_line = line_number
             line = line[:leading].replace("\t", "    ") + line[leading:]
 
         if line.strip() == "":
             blank_run += 1
             if blank_run > 2:
-                compressed_blank_lines = True
+                if blank_lines_line is None:
+                    blank_lines_line = line_number
                 continue
         else:
             blank_run = 0
 
         normalized_lines.append(line)
 
-    if saw_trailing_whitespace:
-        issues.append(Issue("trailing_whitespace", "Removed trailing whitespace.", confidence="high"))
-    if saw_tabs:
-        issues.append(Issue("tabs", "Converted indentation tabs to spaces.", confidence="high"))
-    if compressed_blank_lines:
-        issues.append(Issue("blank_lines", "Compressed excessive blank lines.", confidence="high"))
+    if trailing_whitespace_line is not None:
+        issues.append(Issue("trailing_whitespace", "Removed trailing whitespace.", line=trailing_whitespace_line, confidence="high"))
+    if tabs_line is not None:
+        issues.append(Issue("tabs", "Converted indentation tabs to spaces.", line=tabs_line, confidence="high"))
+    if blank_lines_line is not None:
+        issues.append(Issue("blank_lines", "Compressed excessive blank lines.", line=blank_lines_line, confidence="high"))
 
     return "\n".join(normalized_lines)
 
@@ -140,17 +147,17 @@ def _repair_broken_python(source: str) -> tuple[str, list[Issue]]:
     lines = source.split("\n")
     repaired_lines: list[str] = []
     indent_level = 0
-    compressed_blank_lines = False
-    quote_repairs = False
-    colon_repairs = False
-    indentation_repairs = False
-    import_dedupe_repairs = False
-    pass_repairs = False
+    compressed_blank_lines_line: int | None = None
+    quote_repair_lines: list[int] = []
+    colon_repair_lines: list[int] = []
+    indentation_repair_lines: list[int] = []
+    import_dedupe_line: int | None = None
+    pass_repair_line: int | None = None
     blank_run = 0
     in_triple_string = False
     triple_delimiter = ""
 
-    for original_line in lines:
+    for line_number, original_line in enumerate(lines, start=1):
         toggled = _toggle_triple_quote_state(original_line, in_triple_string, triple_delimiter)
         if toggled:
             in_triple_string, triple_delimiter = toggled
@@ -163,21 +170,22 @@ def _repair_broken_python(source: str) -> tuple[str, list[Issue]]:
             if blank_run <= 2:
                 repaired_lines.append("")
             else:
-                compressed_blank_lines = True
+                if compressed_blank_lines_line is None:
+                    compressed_blank_lines_line = line_number
             continue
 
         blank_run = 0
         original_line = _replace_leading_literal_tabs(original_line)
         content = original_line.lstrip(" \t").rstrip()
 
-        fixed_quotes = _fix_simple_quote_mismatch(content)
+        fixed_quotes = _fix_quote_line(content)
         if fixed_quotes != content:
-            quote_repairs = True
+            quote_repair_lines.append(line_number)
             content = fixed_quotes
 
         fixed_colon = _add_missing_colon(content)
         if fixed_colon != content:
-            colon_repairs = True
+            colon_repair_lines.append(line_number)
             content = fixed_colon
 
         original_indent_units = _indent_units(original_line)
@@ -191,30 +199,31 @@ def _repair_broken_python(source: str) -> tuple[str, list[Issue]]:
 
         desired_indent = " " * (indent_level * 4)
         if desired_indent + content != original_line.rstrip():
-            indentation_repairs = True
+            indentation_repair_lines.append(line_number)
         repaired_lines.append(f"{desired_indent}{content}")
 
         if _BLOCK_HEADER_RE.match(content) and content.endswith(":"):
             indent_level += 1
 
-    repaired_lines, pass_repairs = _insert_missing_pass_blocks(repaired_lines)
+    repaired_lines, pass_repair_line = _insert_missing_pass_blocks(repaired_lines)
     repaired_source = "\n".join(repaired_lines)
-    repaired_source, imports_changed = _dedupe_plain_import_lines(repaired_source)
-    if imports_changed:
-        import_dedupe_repairs = True
+    repaired_source, triple_quote_line = _close_unterminated_triple_quotes(repaired_source)
+    repaired_source, import_dedupe_line = _dedupe_plain_import_lines(repaired_source)
 
-    if indentation_repairs:
-        issues.append(Issue("indentation", "Rebuilt indentation to produce parseable Python.", confidence="medium"))
-    if colon_repairs:
-        issues.append(Issue("missing_colons", "Inserted missing block colons where the syntax was obvious.", confidence="high"))
-    if quote_repairs:
-        issues.append(Issue("quotes", "Balanced simple mismatched quotes in broken string literals.", confidence="medium"))
-    if compressed_blank_lines:
-        issues.append(Issue("blank_lines", "Compressed excessive blank lines during repair.", confidence="high"))
-    if import_dedupe_repairs:
-        issues.append(Issue("imports", "Deduplicated repeated plain import statements during repair.", confidence="high"))
-    if pass_repairs:
-        issues.append(Issue("blocks", "Inserted pass statements into malformed empty blocks.", confidence="medium"))
+    for line in sorted(set(indentation_repair_lines)):
+        issues.append(Issue("indentation", "Rebuilt indentation to produce parseable Python.", line=line, confidence="medium"))
+    for line in sorted(set(colon_repair_lines)):
+        issues.append(Issue("missing_colons", "Inserted missing block colons where the syntax was obvious.", line=line, confidence="high"))
+    for line in sorted(set(quote_repair_lines)):
+        issues.append(Issue("quotes", "Balanced or closed broken string literals where the syntax was obvious.", line=line, confidence="medium"))
+    if triple_quote_line is not None:
+        issues.append(Issue("quotes", "Closed an unterminated triple-quoted string at end of file.", line=triple_quote_line, confidence="low"))
+    if compressed_blank_lines_line is not None:
+        issues.append(Issue("blank_lines", "Compressed excessive blank lines during repair.", line=compressed_blank_lines_line, confidence="high"))
+    if import_dedupe_line is not None:
+        issues.append(Issue("imports", "Deduplicated repeated plain import statements during repair.", line=import_dedupe_line, confidence="high"))
+    if pass_repair_line is not None:
+        issues.append(Issue("blocks", "Inserted pass statements into malformed empty blocks.", line=pass_repair_line, confidence="medium"))
 
     return repaired_source, issues
 
@@ -244,7 +253,14 @@ def _normalize_imports(tree: ast.Module) -> tuple[ast.Module, list[Issue]]:
     original = [ast.unparse(node) for node in import_nodes]
     rebuilt = [ast.unparse(node) for node in normalized_import_nodes]
     if original != rebuilt:
-        issues.append(Issue("imports", "Sorted and deduplicated top-level imports.", confidence="high"))
+        issues.append(
+            Issue(
+                "imports",
+                "Sorted and deduplicated top-level imports.",
+                line=getattr(import_nodes[0], "lineno", None),
+                confidence="high",
+            )
+        )
 
     new_body.extend(normalized_import_nodes)
     new_body.extend(body[index:])
@@ -266,6 +282,23 @@ def _remove_unused_imports(tree: ast.Module) -> tuple[ast.Module, list[Issue]]:
             confidence="high",
         )
         for name, line in transformer.removed
+    ]
+    return updated, issues
+
+
+def _remove_duplicate_import_statements(tree: ast.Module) -> tuple[ast.Module, list[Issue]]:
+    transformer = _DuplicateImportStripper()
+    updated = transformer.visit(tree)
+    ast.fix_missing_locations(updated)
+    issues = [
+        Issue(
+            "imports",
+            f"Removed duplicate import statement '{signature}'.",
+            line=line,
+            severity="low",
+            confidence="high",
+        )
+        for signature, line in transformer.removed
     ]
     return updated, issues
 
@@ -505,6 +538,13 @@ def _maybe_single_quote(token_string: str) -> str:
     return f"{prefix}'{body}'"
 
 
+def _fix_quote_line(line: str) -> str:
+    repaired = _fix_simple_quote_mismatch(line)
+    if repaired != line:
+        return repaired
+    return _close_unterminated_string(line)
+
+
 def _fix_simple_quote_mismatch(line: str) -> str:
     quote_positions = [(idx, char) for idx, char in enumerate(line) if char in {"'", '"'}]
     if len(quote_positions) != 2:
@@ -522,6 +562,36 @@ def _fix_simple_quote_mismatch(line: str) -> str:
     return f"{line[:last_index]}{first_quote}{line[last_index + 1:]}"
 
 
+def _close_unterminated_string(line: str) -> str:
+    for quote in ('"', "'"):
+        if _has_unterminated_quote(line, quote):
+            return f"{line}{quote}"
+    return line
+
+
+def _close_unterminated_triple_quotes(source: str) -> tuple[str, int | None]:
+    for token in ('"""', "'''"):
+        if source.count(token) % 2 == 1:
+            line = source.count("\n") + 1
+            return f"{source}\n{token}", line
+    return source, None
+
+
+def _has_unterminated_quote(line: str, quote: str) -> bool:
+    escaped = False
+    count = 0
+    for char in line:
+        if escaped:
+            escaped = False
+            continue
+        if char == "\\":
+            escaped = True
+            continue
+        if char == quote:
+            count += 1
+    return count % 2 == 1
+
+
 def _add_missing_colon(line: str) -> str:
     stripped = line.rstrip()
     if stripped.endswith(":") or not _BLOCK_HEADER_RE.match(stripped):
@@ -536,11 +606,11 @@ def _add_missing_colon(line: str) -> str:
     return line
 
 
-def _insert_missing_pass_blocks(lines: list[str]) -> tuple[list[str], bool]:
+def _insert_missing_pass_blocks(lines: list[str]) -> tuple[list[str], int | None]:
     if not lines:
-        return lines, False
+        return lines, None
 
-    changed = False
+    changed_line: int | None = None
     updated: list[str] = []
     for index, line in enumerate(lines):
         updated.append(line)
@@ -553,34 +623,66 @@ def _insert_missing_pass_blocks(lines: list[str]) -> tuple[list[str], bool]:
         next_substantive = _find_next_substantive_line(lines, index + 1)
         if next_nonblank is None or next_substantive is None:
             updated.append(" " * (current_indent + 4) + "pass")
-            changed = True
+            if changed_line is None:
+                changed_line = index + 1
             continue
 
         next_indent = _leading_spaces(next_substantive)
         if next_indent <= current_indent:
             updated.append(" " * (current_indent + 4) + "pass")
-            changed = True
+            if changed_line is None:
+                changed_line = index + 1
 
-    return updated, changed
+    return updated, changed_line
 
 
-def _dedupe_plain_import_lines(source: str) -> tuple[str, bool]:
+def _dedupe_plain_import_lines(source: str) -> tuple[str, int | None]:
     lines = source.split("\n")
     seen: set[str] = set()
     updated: list[str] = []
-    changed = False
+    changed_line: int | None = None
 
-    for line in lines:
+    for line_number, line in enumerate(lines, start=1):
         stripped = line.strip()
         if stripped.startswith("import ") and " from " not in stripped:
-            normalized = re.sub(r"\s+", " ", stripped)
-            if normalized in seen:
-                changed = True
+            names = [part.strip() for part in stripped[len("import "):].split(",") if part.strip()]
+            canonical_parts: list[str] = []
+            for name in names:
+                normalized_name = re.sub(r"\s+", " ", name)
+                if normalized_name in seen:
+                    if changed_line is None:
+                        changed_line = line_number
+                    continue
+                seen.add(normalized_name)
+                canonical_parts.append(normalized_name)
+            if not canonical_parts:
+                if changed_line is None:
+                    changed_line = line_number
                 continue
-            seen.add(normalized)
+            line = f"import {', '.join(canonical_parts)}"
+        else:
+            from_match = _FROM_IMPORT_LINE_RE.match(stripped)
+            if from_match:
+                module_name = from_match.group(1)
+                names = [part.strip() for part in from_match.group(2).split(",") if part.strip()]
+                canonical_parts: list[str] = []
+                for name in names:
+                    normalized_name = re.sub(r"\s+", " ", name)
+                    signature = f"from {module_name} import {normalized_name}"
+                    if signature in seen:
+                        if changed_line is None:
+                            changed_line = line_number
+                        continue
+                    seen.add(signature)
+                    canonical_parts.append(normalized_name)
+                if not canonical_parts:
+                    if changed_line is None:
+                        changed_line = line_number
+                    continue
+                line = f"from {module_name} import {', '.join(canonical_parts)}"
         updated.append(line)
 
-    return "\n".join(updated), changed
+    return "\n".join(updated), changed_line
 
 
 def _ensure_trailing_newline(source: str, issues: list[Issue]) -> str:
@@ -782,21 +884,58 @@ class _UnusedImportStripper(ast.NodeTransformer):
         node.names = kept
         return node
 
-    def visit_ImportFrom(self, node: ast.ImportFrom):
-        if any(alias.name == "*" for alias in node.names):
-            return node
 
-        kept = []
-        for alias in node.names:
-            bound_name = alias.asname or alias.name
-            if bound_name in self.used_names:
-                kept.append(alias)
-            else:
-                self.removed.append((bound_name, getattr(node, "lineno", None)))
-        if not kept:
-            return None
-        node.names = kept
+class _DuplicateImportStripper(ast.NodeTransformer):
+    def __init__(self) -> None:
+        self.removed: list[tuple[str, int | None]] = []
+
+    def visit_Module(self, node: ast.Module):
+        node = self.generic_visit(node)
+        node.body = self._dedupe_stmt_list(node.body)
         return node
+
+    def visit_FunctionDef(self, node: ast.FunctionDef):
+        node = self.generic_visit(node)
+        node.body = self._dedupe_stmt_list(node.body)
+        return node
+
+    def visit_AsyncFunctionDef(self, node: ast.AsyncFunctionDef):
+        node = self.generic_visit(node)
+        node.body = self._dedupe_stmt_list(node.body)
+        return node
+
+    def visit_ClassDef(self, node: ast.ClassDef):
+        node = self.generic_visit(node)
+        node.body = self._dedupe_stmt_list(node.body)
+        return node
+
+    def _dedupe_stmt_list(self, statements: list[ast.stmt]) -> list[ast.stmt]:
+        seen: set[str] = set()
+        result: list[ast.stmt] = []
+        for stmt in statements:
+            signature = self._signature(stmt)
+            if signature is not None:
+                if signature in seen:
+                    self.removed.append((signature, getattr(stmt, "lineno", None)))
+                    continue
+                seen.add(signature)
+            result.append(stmt)
+        return result
+
+    def _signature(self, stmt: ast.stmt) -> str | None:
+        if isinstance(stmt, ast.Import):
+            names = sorted(
+                f"{alias.name} as {alias.asname}" if alias.asname else alias.name
+                for alias in stmt.names
+            )
+            return f"import {'|'.join(names)}"
+        if isinstance(stmt, ast.ImportFrom):
+            names = sorted(
+                f"{alias.name} as {alias.asname}" if alias.asname else alias.name
+                for alias in stmt.names
+            )
+            return f"from {stmt.level}:{stmt.module} import {'|'.join(names)}"
+        return None
 
 
 class _FunctionRenamer(ast.NodeTransformer):
