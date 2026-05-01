@@ -59,7 +59,7 @@ function formatLocation(issue) {
   if (line !== undefined && line !== null && column !== undefined && column !== null) return `Line ${line}, col ${column}`;
   if (line !== undefined && line !== null) return `Line ${line}`;
   if (column !== undefined && column !== null) return `Col ${column}`;
-  return "Location not provided";
+  return "";
 }
 
 function normalizeSeverity(issue) {
@@ -76,7 +76,7 @@ function normalizeIssue(issue, index) {
       title: `Issue ${index + 1}`,
       message: issue,
       severity: "low",
-      location: "Location not provided",
+      location: "",
       rule: "",
       snippet: "",
     };
@@ -190,6 +190,7 @@ function renderIssues(issues) {
   elements.issuesEmpty.hidden = true;
   elements.issuesList.innerHTML = issues
     .map((issue) => {
+      const location = issue.location ? `<span class="pill">${escapeHtml(issue.location)}</span>` : "";
       const rule = issue.rule ? `<span class="pill">${escapeHtml(issue.rule)}</span>` : "";
       const confidence = issue.confidence ? `<span class="pill confidence">${escapeHtml(issue.confidence)} confidence</span>` : "";
       const snippet = issue.snippet
@@ -202,7 +203,7 @@ function renderIssues(issues) {
             <h3 class="issue-title">${escapeHtml(issue.title)}</h3>
             <div class="issue-meta">
               <span class="pill ${issue.severity}">${escapeHtml(issue.severity)}</span>
-              <span class="pill">${escapeHtml(issue.location)}</span>
+              ${location}
               ${rule}
               ${confidence}
             </div>
