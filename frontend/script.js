@@ -458,6 +458,13 @@ elements.loadSample.addEventListener("click", () => {
   setInput(SAMPLE_CODE);
   setStatus(elements.inputStatus, "Sample loaded", "ok");
 });
+elements.styleMode.addEventListener("change", () => {
+  if (state.lastResultText) {
+    markResultsStale();
+    return;
+  }
+  setStatus(elements.inputStatus, "Ready to audit", "neutral");
+});
 elements.clearInput.addEventListener("click", () => {
   setInput("");
   state.lastResultText = "";

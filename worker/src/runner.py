@@ -15,12 +15,10 @@ _SAFE_IMPORTS = {
     "itertools",
     "json",
     "math",
-    "os",
     "random",
     "re",
     "statistics",
     "string",
-    "sys",
 }
 
 

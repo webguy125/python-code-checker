@@ -366,12 +366,19 @@ def _find_inconsistent_returns(tree: ast.Module) -> list[Issue]:
 def _apply_pep8_mode(tree: ast.Module) -> tuple[ast.Module, list[Issue]]:
     rename_map: dict[str, str] = {}
     issues: list[Issue] = []
+    existing_names = {
+        node.name
+        for node in tree.body
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+    }
 
     for node in tree.body:
-        if not isinstance(node, ast.FunctionDef):
+        if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
             continue
         normalized_name = _to_snake_case(node.name)
         if normalized_name == node.name or normalized_name in rename_map.values():
+            continue
+        if normalized_name in existing_names and normalized_name != node.name:
             continue
         rename_map[node.name] = normalized_name
 
@@ -543,13 +550,14 @@ def _insert_missing_pass_blocks(lines: list[str]) -> tuple[list[str], bool]:
 
         current_indent = _leading_spaces(line)
         next_nonblank = _find_next_nonblank_line(lines, index + 1)
-        if next_nonblank is None:
+        next_substantive = _find_next_substantive_line(lines, index + 1)
+        if next_nonblank is None or next_substantive is None:
             updated.append(" " * (current_indent + 4) + "pass")
             changed = True
             continue
 
-        next_indent = _leading_spaces(next_nonblank)
-        if next_indent <= current_indent and not next_nonblank.strip().startswith(("#",)):
+        next_indent = _leading_spaces(next_substantive)
+        if next_indent <= current_indent:
             updated.append(" " * (current_indent + 4) + "pass")
             changed = True
 
@@ -687,6 +695,17 @@ def _find_next_nonblank_line(lines: list[str], start: int) -> str | None:
     return None
 
 
+def _find_next_substantive_line(lines: list[str], start: int) -> str | None:
+    for line in lines[start:]:
+        stripped = line.strip()
+        if not stripped:
+            continue
+        if stripped.startswith("#"):
+            continue
+        return line
+    return None
+
+
 def _multiline_string_lines(source: str) -> set[int]:
     protected: set[int] = set()
     try:
@@ -785,6 +804,11 @@ class _FunctionRenamer(ast.NodeTransformer):
         self.rename_map = rename_map
 
     def visit_FunctionDef(self, node: ast.FunctionDef):
+        node = self.generic_visit(node)
+        node.name = self.rename_map.get(node.name, node.name)
+        return node
+
+    def visit_AsyncFunctionDef(self, node: ast.AsyncFunctionDef):
         node = self.generic_visit(node)
         node.name = self.rename_map.get(node.name, node.name)
         return node
