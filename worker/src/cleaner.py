@@ -398,6 +398,7 @@ def _find_inconsistent_returns(tree: ast.Module) -> list[Issue]:
 
 def _apply_pep8_mode(tree: ast.Module) -> tuple[ast.Module, list[Issue]]:
     rename_map: dict[str, str] = {}
+    rename_lines: dict[str, int | None] = {}
     issues: list[Issue] = []
     existing_names = {
         node.name
@@ -414,6 +415,7 @@ def _apply_pep8_mode(tree: ast.Module) -> tuple[ast.Module, list[Issue]]:
         if normalized_name in existing_names and normalized_name != node.name:
             continue
         rename_map[node.name] = normalized_name
+        rename_lines[node.name] = getattr(node, "lineno", None)
 
     if not rename_map:
         return tree, []
@@ -427,6 +429,7 @@ def _apply_pep8_mode(tree: ast.Module) -> tuple[ast.Module, list[Issue]]:
             Issue(
                 "pep8_names",
                 f"Renamed '{old_name}' to '{new_name}' in PEP8 mode.",
+                line=rename_lines.get(old_name),
                 severity="low",
                 confidence="medium",
             )
@@ -507,22 +510,23 @@ def _alias_to_source(alias: ast.alias) -> str:
 
 
 def _normalize_quotes(source: str) -> tuple[str, list[Issue]]:
-    changed = False
+    changed_lines: set[int] = set()
     tokens: list[tokenize.TokenInfo] = []
 
     for token in tokenize.generate_tokens(StringIO(source).readline):
         if token.type == tokenize.STRING:
             replacement = _maybe_single_quote(token.string)
             if replacement != token.string:
-                changed = True
+                changed_lines.add(token.start[0])
                 token = token._replace(string=replacement)
         tokens.append(token)
 
-    if not changed:
+    if not changed_lines:
         return source, []
 
     return tokenize.untokenize(tokens), [
-        Issue("quotes", "Normalized simple string quotes to single quotes.", confidence="high")
+        Issue("quotes", "Normalized simple string quotes to single quotes.", line=line, confidence="high")
+        for line in sorted(changed_lines)
     ]
 
 
@@ -688,7 +692,8 @@ def _dedupe_plain_import_lines(source: str) -> tuple[str, int | None]:
 def _ensure_trailing_newline(source: str, issues: list[Issue]) -> str:
     if source.endswith("\n"):
         return source
-    issues.append(Issue("newline", "Ensured a final newline.", severity="low", confidence="high"))
+    line = source.count("\n") + 1 if source else 1
+    issues.append(Issue("newline", "Ensured a final newline.", line=line, severity="low", confidence="high"))
     return source + "\n"
 
 
