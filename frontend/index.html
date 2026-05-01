@@ -79,6 +79,13 @@
               <h2>Cleaned code</h2>
             </div>
             <div class="card-actions">
+              <label class="select-option" for="style-mode">
+                <span>Style mode</span>
+                <select id="style-mode" name="style-mode">
+                  <option value="standard">Standard</option>
+                  <option value="pep8">PEP8</option>
+                </select>
+              </label>
               <label class="toggle-option" for="run-mock">
                 <input type="checkbox" id="run-mock" name="run-mock">
                 <span>Run mock test</span>
@@ -132,6 +139,10 @@
             <div class="mock-section">
               <h3>Zero-argument functions executed</h3>
               <div id="mock-called-functions" class="mock-functions"></div>
+            </div>
+            <div class="mock-section">
+              <h3>Sample-called functions</h3>
+              <div id="mock-sample-calls" class="sample-calls"></div>
             </div>
             <div class="mock-section" id="mock-error-section" hidden>
               <h3>Runtime error</h3>

@@ -10,6 +10,7 @@ print(area(5))
 
 const elements = {
   codeInput: document.getElementById("code-input"),
+  styleMode: document.getElementById("style-mode"),
   runMock: document.getElementById("run-mock"),
   runAudit: document.getElementById("run-audit"),
   loadSample: document.getElementById("load-sample"),
@@ -26,6 +27,7 @@ const elements = {
   mockStdout: document.getElementById("mock-stdout"),
   mockFunctions: document.getElementById("mock-functions"),
   mockCalledFunctions: document.getElementById("mock-called-functions"),
+  mockSampleCalls: document.getElementById("mock-sample-calls"),
   mockErrorSection: document.getElementById("mock-error-section"),
   mockError: document.getElementById("mock-error"),
 };
@@ -83,6 +85,7 @@ function normalizeIssue(issue, index) {
   const message = issue.message ?? issue.detail ?? issue.description ?? issue.text ?? JSON.stringify(issue);
   const title = issue.title ?? issue.name ?? issue.rule ?? `Issue ${index + 1}`;
   const rule = issue.rule ?? issue.code ?? issue.type ?? "";
+  const confidence = issue.confidence ?? "medium";
   const snippet = issue.snippet ?? issue.line_text ?? issue.source ?? "";
 
   return {
@@ -91,6 +94,7 @@ function normalizeIssue(issue, index) {
     severity: normalizeSeverity(issue),
     location: formatLocation(issue),
     rule,
+    confidence,
     snippet,
   };
 }
@@ -187,6 +191,7 @@ function renderIssues(issues) {
   elements.issuesList.innerHTML = issues
     .map((issue) => {
       const rule = issue.rule ? `<span class="pill">${escapeHtml(issue.rule)}</span>` : "";
+      const confidence = issue.confidence ? `<span class="pill confidence">${escapeHtml(issue.confidence)} confidence</span>` : "";
       const snippet = issue.snippet
         ? `<div class="issue-code">${escapeHtml(issue.snippet)}</div>`
         : "";
@@ -199,6 +204,7 @@ function renderIssues(issues) {
               <span class="pill ${issue.severity}">${escapeHtml(issue.severity)}</span>
               <span class="pill">${escapeHtml(issue.location)}</span>
               ${rule}
+              ${confidence}
             </div>
           </div>
           <p class="issue-message">${escapeHtml(issue.message)}</p>
@@ -248,12 +254,22 @@ function renderMockTest(mockTest) {
 
   const functions = Array.isArray(mockTest.functions_discovered) ? mockTest.functions_discovered : [];
   const autoCalled = Array.isArray(mockTest.functions_auto_called) ? mockTest.functions_auto_called : [];
+  const sampleCalls = Array.isArray(mockTest.sample_calls) ? mockTest.sample_calls : [];
   elements.mockFunctions.innerHTML = functions.length
     ? functions.map((name) => `<span class="pill">${escapeHtml(name)}</span>`).join("")
     : '<span class="pill">No user-defined functions found</span>';
   elements.mockCalledFunctions.innerHTML = autoCalled.length
     ? autoCalled.map((name) => `<span class="pill">${escapeHtml(name)}</span>`).join("")
     : '<span class="pill">No zero-argument functions were executed</span>';
+  elements.mockSampleCalls.innerHTML = sampleCalls.length
+    ? sampleCalls.map((call) => {
+      const tone = call.status === "passed" ? "low" : "high";
+      const detail = call.status === "passed"
+        ? `=> ${escapeHtml(call.result ?? "None")}`
+        : escapeHtml(call.error ?? "Failed");
+      return `<article class="sample-call-card"><div class="issue-meta"><span class="pill ${tone}">${escapeHtml(call.status)}</span><span class="pill">${escapeHtml(call.name)}(${escapeHtml((call.args ?? []).join(", "))})</span></div><p class="issue-message">${detail}</p></article>`;
+    }).join("")
+    : '<span class="pill">No sample calls were generated</span>';
 
   if (mockTest.error && typeof mockTest.error === "object") {
     elements.mockErrorSection.hidden = false;
@@ -270,6 +286,7 @@ function renderMockTest(mockTest) {
 
 function setLoading(isLoading) {
   elements.runAudit.disabled = isLoading;
+  elements.styleMode.disabled = isLoading;
   elements.runMock.disabled = isLoading;
   elements.copyOutput.disabled = isLoading;
   elements.loadSample.disabled = isLoading;
@@ -333,7 +350,7 @@ async function runAudit() {
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ code, run_mock: elements.runMock.checked }),
+      body: JSON.stringify({ code, run_mock: elements.runMock.checked, style_mode: elements.styleMode.value }),
       signal: state.abortController.signal,
     });
 
@@ -445,6 +462,7 @@ elements.clearInput.addEventListener("click", () => {
   setInput("");
   state.lastResultText = "";
   state.hasFreshResult = false;
+  elements.styleMode.value = "standard";
   elements.runMock.checked = false;
   elements.cleanedOutput.innerHTML = "<code>Run an audit to see cleaned code here.</code>";
   setEmptyState("No audit has been run yet. Results will appear here after you submit code.");

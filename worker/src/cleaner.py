@@ -12,6 +12,8 @@ _BLOCK_HEADER_RE = re.compile(
     r"^(async\s+def|def|class|if|elif|else|for|while|try|except|finally|with|match|case)\b"
 )
 _DEDENT_HEADER_RE = re.compile(r"^(elif|else|except|finally|case)\b")
+_SNAKE_CASE_EDGE_RE = re.compile(r"(?<!^)(?=[A-Z])")
+_TERMINAL_NODES = (ast.Return, ast.Raise, ast.Continue, ast.Break)
 
 
 @dataclass(frozen=True)
@@ -21,12 +23,14 @@ class Issue:
     line: int | None = None
     column: int | None = None
     severity: str = "medium"
+    confidence: str = "medium"
 
     def to_dict(self) -> dict[str, int | str]:
         payload: dict[str, int | str] = {
             "type": self.type,
             "message": self.message,
             "severity": self.severity,
+            "confidence": self.confidence,
         }
         if self.line is not None:
             payload["line"] = self.line
@@ -35,11 +39,9 @@ class Issue:
         return payload
 
 
-def clean_python_code(source: str) -> tuple[str, list[dict[str, int | str]]]:
+def clean_python_code(source: str, style_mode: str = "standard") -> tuple[str, list[dict[str, int | str]]]:
     issues: list[Issue] = []
     normalized = _normalize_source(source, issues)
-
-    parsed_tree: ast.Module | None = None
     candidate = normalized
 
     try:
@@ -57,6 +59,7 @@ def clean_python_code(source: str) -> tuple[str, list[dict[str, int | str]]]:
                     line=exc.lineno,
                     column=exc.offset,
                     severity="high",
+                    confidence="high",
                 )
             )
             candidate = _ensure_trailing_newline(candidate, issues)
@@ -64,8 +67,16 @@ def clean_python_code(source: str) -> tuple[str, list[dict[str, int | str]]]:
 
     parsed_tree, import_issues = _normalize_imports(parsed_tree)
     issues.extend(import_issues)
+    parsed_tree, unused_import_issues = _remove_unused_imports(parsed_tree)
+    issues.extend(unused_import_issues)
     parsed_tree, return_issues = _repair_missing_fallback_returns(parsed_tree)
     issues.extend(return_issues)
+    issues.extend(_find_unreachable_code(parsed_tree))
+    issues.extend(_find_inconsistent_returns(parsed_tree))
+
+    if style_mode == "pep8":
+        parsed_tree, pep8_issues = _apply_pep8_mode(parsed_tree)
+        issues.extend(pep8_issues)
 
     ast.fix_missing_locations(parsed_tree)
     cleaned = ast.unparse(parsed_tree)
@@ -93,8 +104,7 @@ def _normalize_source(source: str, issues: list[Issue]) -> str:
 
         if line.startswith(r"\t"):
             saw_tabs = True
-            literal_tabs = len(line) - len(line.lstrip("\\t"))
-            line = ("    " * literal_tabs) + line[literal_tabs:]
+            line = _replace_leading_literal_tabs(line)
 
         if line.rstrip() != line:
             saw_trailing_whitespace = True
@@ -116,11 +126,11 @@ def _normalize_source(source: str, issues: list[Issue]) -> str:
         normalized_lines.append(line)
 
     if saw_trailing_whitespace:
-        issues.append(Issue("trailing_whitespace", "Removed trailing whitespace."))
+        issues.append(Issue("trailing_whitespace", "Removed trailing whitespace.", confidence="high"))
     if saw_tabs:
-        issues.append(Issue("tabs", "Converted indentation tabs to spaces."))
+        issues.append(Issue("tabs", "Converted indentation tabs to spaces.", confidence="high"))
     if compressed_blank_lines:
-        issues.append(Issue("blank_lines", "Compressed excessive blank lines."))
+        issues.append(Issue("blank_lines", "Compressed excessive blank lines.", confidence="high"))
 
     return "\n".join(normalized_lines)
 
@@ -135,12 +145,12 @@ def _repair_broken_python(source: str) -> tuple[str, list[Issue]]:
     colon_repairs = False
     indentation_repairs = False
     import_dedupe_repairs = False
+    pass_repairs = False
     blank_run = 0
-
     in_triple_string = False
     triple_delimiter = ""
 
-    for index, original_line in enumerate(lines, start=1):
+    for original_line in lines:
         toggled = _toggle_triple_quote_state(original_line, in_triple_string, triple_delimiter)
         if toggled:
             in_triple_string, triple_delimiter = toggled
@@ -148,8 +158,7 @@ def _repair_broken_python(source: str) -> tuple[str, list[Issue]]:
             blank_run = 0 if original_line.strip() else blank_run + 1
             continue
 
-        stripped = original_line.strip()
-        if stripped == "":
+        if original_line.strip() == "":
             blank_run += 1
             if blank_run <= 2:
                 repaired_lines.append("")
@@ -188,21 +197,24 @@ def _repair_broken_python(source: str) -> tuple[str, list[Issue]]:
         if _BLOCK_HEADER_RE.match(content) and content.endswith(":"):
             indent_level += 1
 
+    repaired_lines, pass_repairs = _insert_missing_pass_blocks(repaired_lines)
     repaired_source = "\n".join(repaired_lines)
     repaired_source, imports_changed = _dedupe_plain_import_lines(repaired_source)
     if imports_changed:
         import_dedupe_repairs = True
 
     if indentation_repairs:
-        issues.append(Issue("indentation", "Rebuilt indentation to produce parseable Python."))
+        issues.append(Issue("indentation", "Rebuilt indentation to produce parseable Python.", confidence="medium"))
     if colon_repairs:
-        issues.append(Issue("missing_colons", "Inserted missing block colons where the syntax was obvious."))
+        issues.append(Issue("missing_colons", "Inserted missing block colons where the syntax was obvious.", confidence="high"))
     if quote_repairs:
-        issues.append(Issue("quotes", "Balanced simple mismatched quotes in broken string literals."))
+        issues.append(Issue("quotes", "Balanced simple mismatched quotes in broken string literals.", confidence="medium"))
     if compressed_blank_lines:
-        issues.append(Issue("blank_lines", "Compressed excessive blank lines during repair."))
+        issues.append(Issue("blank_lines", "Compressed excessive blank lines during repair.", confidence="high"))
     if import_dedupe_repairs:
-        issues.append(Issue("imports", "Deduplicated repeated plain import statements during repair."))
+        issues.append(Issue("imports", "Deduplicated repeated plain import statements during repair.", confidence="high"))
+    if pass_repairs:
+        issues.append(Issue("blocks", "Inserted pass statements into malformed empty blocks.", confidence="medium"))
 
     return repaired_source, issues
 
@@ -232,7 +244,7 @@ def _normalize_imports(tree: ast.Module) -> tuple[ast.Module, list[Issue]]:
     original = [ast.unparse(node) for node in import_nodes]
     rebuilt = [ast.unparse(node) for node in normalized_import_nodes]
     if original != rebuilt:
-        issues.append(Issue("imports", "Sorted and deduplicated top-level imports."))
+        issues.append(Issue("imports", "Sorted and deduplicated top-level imports.", confidence="high"))
 
     new_body.extend(normalized_import_nodes)
     new_body.extend(body[index:])
@@ -240,10 +252,28 @@ def _normalize_imports(tree: ast.Module) -> tuple[ast.Module, list[Issue]]:
     return tree, issues
 
 
+def _remove_unused_imports(tree: ast.Module) -> tuple[ast.Module, list[Issue]]:
+    used_names = _collect_used_names(tree)
+    transformer = _UnusedImportStripper(used_names)
+    updated = transformer.visit(tree)
+    ast.fix_missing_locations(updated)
+    issues = [
+        Issue(
+            "unused_imports",
+            f"Removed unused import '{name}'.",
+            line=line,
+            severity="low",
+            confidence="high",
+        )
+        for name, line in transformer.removed
+    ]
+    return updated, issues
+
+
 def _repair_missing_fallback_returns(tree: ast.Module) -> tuple[ast.Module, list[Issue]]:
     issues: list[Issue] = []
 
-    for node in tree.body:
+    for node in ast.walk(tree):
         if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
             continue
 
@@ -251,20 +281,118 @@ def _repair_missing_fallback_returns(tree: ast.Module) -> tuple[ast.Module, list
         if not fallback_name:
             continue
 
-        node.body.append(
-            ast.Return(
-                value=ast.Name(id=fallback_name, ctx=ast.Load())
-            )
-        )
+        node.body.append(ast.Return(value=ast.Name(id=fallback_name, ctx=ast.Load())))
         issues.append(
             Issue(
                 "returns",
                 f"Added a fallback return for '{fallback_name}' to keep the function return path consistent.",
-                severity="medium",
+                line=node.lineno,
+                confidence="medium",
             )
         )
 
     return tree, issues
+
+
+def _find_unreachable_code(tree: ast.Module) -> list[Issue]:
+    issues: list[Issue] = []
+    for stmt_list in _iter_statement_lists(tree):
+        terminated = False
+        terminal_line: int | None = None
+        for stmt in stmt_list:
+            if terminated:
+                issues.append(
+                    Issue(
+                        "unreachable_code",
+                        "Found code after a terminal statement in the same block.",
+                        line=getattr(stmt, "lineno", None),
+                        severity="low",
+                        confidence="high",
+                    )
+                )
+                continue
+
+            if isinstance(stmt, _TERMINAL_NODES):
+                terminated = True
+                terminal_line = getattr(stmt, "lineno", None)
+            elif isinstance(stmt, ast.If):
+                if _block_always_terminates(stmt.body) and _block_always_terminates(stmt.orelse):
+                    terminated = True
+                    terminal_line = getattr(stmt, "lineno", None)
+
+        if terminated and terminal_line is not None:
+            continue
+    return issues
+
+
+def _find_inconsistent_returns(tree: ast.Module) -> list[Issue]:
+    issues: list[Issue] = []
+    for node in ast.walk(tree):
+        if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            continue
+
+        has_value_return = False
+        has_bare_return = False
+        for child in ast.walk(node):
+            if isinstance(child, ast.Return):
+                if child.value is None:
+                    has_bare_return = True
+                else:
+                    has_value_return = True
+
+        if has_value_return and not _function_always_returns(node):
+            issues.append(
+                Issue(
+                    "return_paths",
+                    "Function still has at least one path that can fall through without returning a value.",
+                    line=node.lineno,
+                    severity="medium",
+                    confidence="low",
+                )
+            )
+        elif has_value_return and has_bare_return:
+            issues.append(
+                Issue(
+                    "return_paths",
+                    "Function mixes value returns and bare returns.",
+                    line=node.lineno,
+                    severity="medium",
+                    confidence="medium",
+                )
+            )
+    return issues
+
+
+def _apply_pep8_mode(tree: ast.Module) -> tuple[ast.Module, list[Issue]]:
+    rename_map: dict[str, str] = {}
+    issues: list[Issue] = []
+
+    for node in tree.body:
+        if not isinstance(node, ast.FunctionDef):
+            continue
+        normalized_name = _to_snake_case(node.name)
+        if normalized_name == node.name or normalized_name in rename_map.values():
+            continue
+        rename_map[node.name] = normalized_name
+
+    if not rename_map:
+        return tree, []
+
+    transformer = _FunctionRenamer(rename_map)
+    updated = transformer.visit(tree)
+    ast.fix_missing_locations(updated)
+
+    for old_name, new_name in rename_map.items():
+        issues.append(
+            Issue(
+                "pep8_names",
+                f"Renamed '{old_name}' to '{new_name}' in PEP8 mode.",
+                severity="low",
+                confidence="medium",
+            )
+        )
+
+    return updated, issues
 
 
 def _rebuild_import_block(nodes: list[ast.stmt]) -> list[ast.stmt]:
@@ -354,7 +482,7 @@ def _normalize_quotes(source: str) -> tuple[str, list[Issue]]:
         return source, []
 
     return tokenize.untokenize(tokens), [
-        Issue("quotes", "Normalized simple string quotes to single quotes.")
+        Issue("quotes", "Normalized simple string quotes to single quotes.", confidence="high")
     ]
 
 
@@ -367,7 +495,6 @@ def _maybe_single_quote(token_string: str) -> str:
     body = match.group(2)
     if "'" in body:
         return token_string
-
     return f"{prefix}'{body}'"
 
 
@@ -402,6 +529,33 @@ def _add_missing_colon(line: str) -> str:
     return line
 
 
+def _insert_missing_pass_blocks(lines: list[str]) -> tuple[list[str], bool]:
+    if not lines:
+        return lines, False
+
+    changed = False
+    updated: list[str] = []
+    for index, line in enumerate(lines):
+        updated.append(line)
+        stripped = line.strip()
+        if not stripped or not stripped.endswith(":") or not _BLOCK_HEADER_RE.match(stripped):
+            continue
+
+        current_indent = _leading_spaces(line)
+        next_nonblank = _find_next_nonblank_line(lines, index + 1)
+        if next_nonblank is None:
+            updated.append(" " * (current_indent + 4) + "pass")
+            changed = True
+            continue
+
+        next_indent = _leading_spaces(next_nonblank)
+        if next_indent <= current_indent and not next_nonblank.strip().startswith(("#",)):
+            updated.append(" " * (current_indent + 4) + "pass")
+            changed = True
+
+    return updated, changed
+
+
 def _dedupe_plain_import_lines(source: str) -> tuple[str, bool]:
     lines = source.split("\n")
     seen: set[str] = set()
@@ -424,7 +578,7 @@ def _dedupe_plain_import_lines(source: str) -> tuple[str, bool]:
 def _ensure_trailing_newline(source: str, issues: list[Issue]) -> str:
     if source.endswith("\n"):
         return source
-    issues.append(Issue("newline", "Ensured a final newline.", severity="low"))
+    issues.append(Issue("newline", "Ensured a final newline.", severity="low", confidence="high"))
     return source + "\n"
 
 
@@ -441,10 +595,7 @@ def _find_fallback_return_name(node: ast.FunctionDef | ast.AsyncFunctionDef) -> 
         return None
 
     last_stmt = node.body[-1]
-    if not isinstance(last_stmt, ast.If):
-        return None
-
-    if last_stmt.orelse:
+    if not isinstance(last_stmt, ast.If) or last_stmt.orelse:
         return None
 
     returned_name = _single_returned_name(last_stmt.body)
@@ -459,22 +610,18 @@ def _find_fallback_return_name(node: ast.FunctionDef | ast.AsyncFunctionDef) -> 
 
 
 def _single_returned_name(statements: list[ast.stmt]) -> str | None:
-    if len(statements) < 1:
+    if not statements:
         return None
 
     last_stmt = statements[-1]
-    if not isinstance(last_stmt, ast.Return):
-        return None
-
-    value = last_stmt.value
-    if not isinstance(value, ast.Name):
+    if not isinstance(last_stmt, ast.Return) or not isinstance(last_stmt.value, ast.Name):
         return None
 
     for stmt in statements[:-1]:
-        if isinstance(stmt, (ast.Return, ast.Raise, ast.Break, ast.Continue)):
+        if isinstance(stmt, _TERMINAL_NODES):
             return None
 
-    return value.id
+    return last_stmt.value.id
 
 
 def _last_assigned_name_before_if(statements: list[ast.stmt]) -> str | None:
@@ -485,6 +632,58 @@ def _last_assigned_name_before_if(statements: list[ast.stmt]) -> str | None:
             return stmt.target.id
         if isinstance(stmt, (ast.Return, ast.Raise)):
             return None
+    return None
+
+
+def _collect_used_names(tree: ast.AST) -> set[str]:
+    collector = _UsedNameCollector()
+    collector.visit(tree)
+    return collector.used_names
+
+
+def _function_always_returns(node: ast.FunctionDef | ast.AsyncFunctionDef) -> bool:
+    return _block_always_terminates(node.body)
+
+
+def _block_always_terminates(statements: list[ast.stmt]) -> bool:
+    if not statements:
+        return False
+
+    for stmt in statements:
+        if isinstance(stmt, _TERMINAL_NODES):
+            return True
+        if isinstance(stmt, ast.If):
+            if _block_always_terminates(stmt.body) and _block_always_terminates(stmt.orelse):
+                return True
+        if isinstance(stmt, (ast.For, ast.While, ast.With, ast.Try, ast.Match)):
+            return False
+    return False
+
+
+def _iter_statement_lists(tree: ast.AST) -> list[list[ast.stmt]]:
+    lists: list[list[ast.stmt]] = []
+    for node in ast.walk(tree):
+        for field in ("body", "orelse", "finalbody"):
+            value = getattr(node, field, None)
+            if isinstance(value, list) and value and all(isinstance(item, ast.stmt) for item in value):
+                lists.append(value)
+    return lists
+
+
+def _to_snake_case(name: str) -> str:
+    normalized = _SNAKE_CASE_EDGE_RE.sub("_", name).lower()
+    normalized = re.sub(r"__+", "_", normalized)
+    return normalized.strip("_") or name
+
+
+def _leading_spaces(line: str) -> int:
+    return len(line) - len(line.lstrip(" "))
+
+
+def _find_next_nonblank_line(lines: list[str], start: int) -> str | None:
+    for line in lines[start:]:
+        if line.strip():
+            return line
     return None
 
 
@@ -534,3 +733,69 @@ def _replace_leading_literal_tabs(line: str) -> str:
     if count == 0:
         return line
     return ("    " * count) + remaining
+
+
+class _UsedNameCollector(ast.NodeVisitor):
+    def __init__(self) -> None:
+        self.used_names: set[str] = set()
+
+    def visit_Name(self, node: ast.Name) -> None:
+        if isinstance(node.ctx, ast.Load):
+            self.used_names.add(node.id)
+        self.generic_visit(node)
+
+
+class _UnusedImportStripper(ast.NodeTransformer):
+    def __init__(self, used_names: set[str]) -> None:
+        self.used_names = used_names
+        self.removed: list[tuple[str, int | None]] = []
+
+    def visit_Import(self, node: ast.Import):
+        kept = []
+        for alias in node.names:
+            bound_name = alias.asname or alias.name.split(".")[0]
+            if bound_name in self.used_names:
+                kept.append(alias)
+            else:
+                self.removed.append((bound_name, getattr(node, "lineno", None)))
+        if not kept:
+            return None
+        node.names = kept
+        return node
+
+    def visit_ImportFrom(self, node: ast.ImportFrom):
+        if any(alias.name == "*" for alias in node.names):
+            return node
+
+        kept = []
+        for alias in node.names:
+            bound_name = alias.asname or alias.name
+            if bound_name in self.used_names:
+                kept.append(alias)
+            else:
+                self.removed.append((bound_name, getattr(node, "lineno", None)))
+        if not kept:
+            return None
+        node.names = kept
+        return node
+
+
+class _FunctionRenamer(ast.NodeTransformer):
+    def __init__(self, rename_map: dict[str, str]) -> None:
+        self.rename_map = rename_map
+
+    def visit_FunctionDef(self, node: ast.FunctionDef):
+        node = self.generic_visit(node)
+        node.name = self.rename_map.get(node.name, node.name)
+        return node
+
+    def visit_Call(self, node: ast.Call):
+        node = self.generic_visit(node)
+        if isinstance(node.func, ast.Name):
+            node.func.id = self.rename_map.get(node.func.id, node.func.id)
+        return node
+
+    def visit_Name(self, node: ast.Name):
+        if isinstance(node.ctx, ast.Load):
+            node.id = self.rename_map.get(node.id, node.id)
+        return node

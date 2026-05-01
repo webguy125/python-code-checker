@@ -266,6 +266,25 @@ button {
   accent-color: var(--accent-strong);
 }
 
+.select-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  padding: 0 14px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--text);
+}
+
+.select-option select {
+  background: transparent;
+  color: var(--text);
+  border: 0;
+  outline: none;
+}
+
 .primary-button,
 .ghost-button {
   min-height: 44px;
@@ -409,6 +428,18 @@ pre {
   gap: 8px;
 }
 
+.sample-calls {
+  display: grid;
+  gap: 10px;
+}
+
+.sample-call-card {
+  border-radius: 16px;
+  padding: 14px;
+  background: rgba(255, 255, 255, 0.035);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
 .issue-card {
   border-radius: 18px;
   padding: 16px;
@@ -459,6 +490,11 @@ pre {
 .pill.low {
   background: rgba(56, 189, 248, 0.14);
   color: #bfefff;
+}
+
+.pill.confidence {
+  background: rgba(45, 212, 191, 0.14);
+  color: #b9fff4;
 }
 
 .issue-message {

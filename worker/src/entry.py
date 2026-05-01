@@ -81,7 +81,8 @@ class Default(WorkerEntrypoint):
                 status=400,
             )
 
-        cleaned_code, issues_found = clean_python_code(code)
+        style_mode = _extract_style_mode(payload)
+        cleaned_code, issues_found = clean_python_code(code, style_mode=style_mode)
         run_mock = _extract_run_mock(payload)
         mock_test = None
 
@@ -93,6 +94,7 @@ class Default(WorkerEntrypoint):
                 "cleaned_code": cleaned_code,
                 "issues_found": issues_found,
                 "mock_test": mock_test,
+                "style_mode": style_mode,
                 "summary": (
                     "No issues detected."
                     if not issues_found
@@ -140,6 +142,12 @@ def _extract_run_mock(payload) -> bool:
     if not isinstance(payload, dict):
         return False
     return bool(payload.get("run_mock"))
+
+
+def _extract_style_mode(payload) -> str:
+    if not isinstance(payload, dict):
+        return "standard"
+    return "pep8" if payload.get("style_mode") == "pep8" else "standard"
 
 
 def _has_unresolved_syntax_issue(issues_found: list[dict]) -> bool:
