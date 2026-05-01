@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import ast
+from collections import defaultdict
 import re
 import tokenize
 from dataclasses import dataclass
@@ -64,7 +65,8 @@ def clean_python_code(source: str, style_mode: str = "standard") -> tuple[str, l
                 )
             )
             candidate = _ensure_trailing_newline(candidate, issues)
-            return candidate, [issue.to_dict() for issue in issues]
+            finalized = _finalize_issues(issues)
+            return candidate, [issue.to_dict() for issue in finalized]
 
     parsed_tree, import_issues = _normalize_imports(parsed_tree)
     issues.extend(import_issues)
@@ -86,7 +88,8 @@ def clean_python_code(source: str, style_mode: str = "standard") -> tuple[str, l
     cleaned, quote_issues = _normalize_quotes(cleaned)
     issues.extend(quote_issues)
     cleaned = _ensure_trailing_newline(cleaned, issues)
-    return cleaned, [issue.to_dict() for issue in issues]
+    finalized = _finalize_issues(issues)
+    return cleaned, [issue.to_dict() for issue in finalized]
 
 
 def _normalize_source(source: str, issues: list[Issue]) -> str:
@@ -95,7 +98,9 @@ def _normalize_source(source: str, issues: list[Issue]) -> str:
     protected_lines = _multiline_string_lines(source)
     normalized_lines: list[str] = []
     trailing_whitespace_line: int | None = None
+    trailing_whitespace_column: int | None = None
     tabs_line: int | None = None
+    tabs_column: int | None = None
     blank_lines_line: int | None = None
     blank_run = 0
 
@@ -108,17 +113,20 @@ def _normalize_source(source: str, issues: list[Issue]) -> str:
         if line.startswith(r"\t"):
             if tabs_line is None:
                 tabs_line = line_number
+                tabs_column = 1
             line = _replace_leading_literal_tabs(line)
 
         if line.rstrip() != line:
             if trailing_whitespace_line is None:
                 trailing_whitespace_line = line_number
+                trailing_whitespace_column = len(line.rstrip()) + 1
         line = line.rstrip()
 
         leading = len(line) - len(line.lstrip(" \t"))
         if leading and "\t" in line[:leading]:
             if tabs_line is None:
                 tabs_line = line_number
+                tabs_column = line[:leading].index("\t") + 1
             line = line[:leading].replace("\t", "    ") + line[leading:]
 
         if line.strip() == "":
@@ -133,11 +141,19 @@ def _normalize_source(source: str, issues: list[Issue]) -> str:
         normalized_lines.append(line)
 
     if trailing_whitespace_line is not None:
-        issues.append(Issue("trailing_whitespace", "Removed trailing whitespace.", line=trailing_whitespace_line, confidence="high"))
+        issues.append(
+            Issue(
+                "trailing_whitespace",
+                "Removed trailing whitespace.",
+                line=trailing_whitespace_line,
+                column=trailing_whitespace_column,
+                confidence="high",
+            )
+        )
     if tabs_line is not None:
-        issues.append(Issue("tabs", "Converted indentation tabs to spaces.", line=tabs_line, confidence="high"))
+        issues.append(Issue("tabs", "Converted indentation tabs to spaces.", line=tabs_line, column=tabs_column, confidence="high"))
     if blank_lines_line is not None:
-        issues.append(Issue("blank_lines", "Compressed excessive blank lines.", line=blank_lines_line, confidence="high"))
+        issues.append(Issue("blank_lines", "Compressed excessive blank lines.", line=blank_lines_line, column=1, confidence="high"))
 
     return "\n".join(normalized_lines)
 
@@ -148,9 +164,9 @@ def _repair_broken_python(source: str) -> tuple[str, list[Issue]]:
     repaired_lines: list[str] = []
     indent_level = 0
     compressed_blank_lines_line: int | None = None
-    quote_repair_lines: list[int] = []
-    colon_repair_lines: list[int] = []
-    indentation_repair_lines: list[int] = []
+    quote_repair_points: list[tuple[int, int | None]] = []
+    colon_repair_points: list[tuple[int, int | None]] = []
+    indentation_repair_points: list[tuple[int, int | None]] = []
     import_dedupe_line: int | None = None
     pass_repair_line: int | None = None
     blank_run = 0
@@ -180,12 +196,12 @@ def _repair_broken_python(source: str) -> tuple[str, list[Issue]]:
 
         fixed_quotes = _fix_quote_line(content)
         if fixed_quotes != content:
-            quote_repair_lines.append(line_number)
+            quote_repair_points.append((line_number, _first_quote_column(original_line)))
             content = fixed_quotes
 
         fixed_colon = _add_missing_colon(content)
         if fixed_colon != content:
-            colon_repair_lines.append(line_number)
+            colon_repair_points.append((line_number, len(original_line.rstrip()) + 1))
             content = fixed_colon
 
         original_indent_units = _indent_units(original_line)
@@ -199,7 +215,7 @@ def _repair_broken_python(source: str) -> tuple[str, list[Issue]]:
 
         desired_indent = " " * (indent_level * 4)
         if desired_indent + content != original_line.rstrip():
-            indentation_repair_lines.append(line_number)
+            indentation_repair_points.append((line_number, 1))
         repaired_lines.append(f"{desired_indent}{content}")
 
         if _BLOCK_HEADER_RE.match(content) and content.endswith(":"):
@@ -210,20 +226,20 @@ def _repair_broken_python(source: str) -> tuple[str, list[Issue]]:
     repaired_source, triple_quote_line = _close_unterminated_triple_quotes(repaired_source)
     repaired_source, import_dedupe_line = _dedupe_plain_import_lines(repaired_source)
 
-    for line in sorted(set(indentation_repair_lines)):
-        issues.append(Issue("indentation", "Rebuilt indentation to produce parseable Python.", line=line, confidence="medium"))
-    for line in sorted(set(colon_repair_lines)):
-        issues.append(Issue("missing_colons", "Inserted missing block colons where the syntax was obvious.", line=line, confidence="high"))
-    for line in sorted(set(quote_repair_lines)):
-        issues.append(Issue("quotes", "Balanced or closed broken string literals where the syntax was obvious.", line=line, confidence="medium"))
+    for line, column in _dedupe_points(indentation_repair_points):
+        issues.append(Issue("indentation", "Rebuilt indentation to produce parseable Python.", line=line, column=column, confidence="medium"))
+    for line, column in _dedupe_points(colon_repair_points):
+        issues.append(Issue("missing_colons", "Inserted missing block colons where the syntax was obvious.", line=line, column=column, confidence="high"))
+    for line, column in _dedupe_points(quote_repair_points):
+        issues.append(Issue("quotes", "Balanced or closed broken string literals where the syntax was obvious.", line=line, column=column, confidence="medium"))
     if triple_quote_line is not None:
-        issues.append(Issue("quotes", "Closed an unterminated triple-quoted string at end of file.", line=triple_quote_line, confidence="low"))
+        issues.append(Issue("quotes", "Closed an unterminated triple-quoted string at end of file.", line=triple_quote_line, column=1, confidence="low"))
     if compressed_blank_lines_line is not None:
-        issues.append(Issue("blank_lines", "Compressed excessive blank lines during repair.", line=compressed_blank_lines_line, confidence="high"))
+        issues.append(Issue("blank_lines", "Compressed excessive blank lines during repair.", line=compressed_blank_lines_line, column=1, confidence="high"))
     if import_dedupe_line is not None:
-        issues.append(Issue("imports", "Deduplicated repeated plain import statements during repair.", line=import_dedupe_line, confidence="high"))
+        issues.append(Issue("imports", "Deduplicated repeated plain import statements during repair.", line=import_dedupe_line, column=1, confidence="high"))
     if pass_repair_line is not None:
-        issues.append(Issue("blocks", "Inserted pass statements into malformed empty blocks.", line=pass_repair_line, confidence="medium"))
+        issues.append(Issue("blocks", "Inserted pass statements into malformed empty blocks.", line=pass_repair_line, column=1, confidence="medium"))
 
     return repaired_source, issues
 
@@ -258,6 +274,7 @@ def _normalize_imports(tree: ast.Module) -> tuple[ast.Module, list[Issue]]:
                 "imports",
                 "Sorted and deduplicated top-level imports.",
                 line=getattr(import_nodes[0], "lineno", None),
+                column=1,
                 confidence="high",
             )
         )
@@ -278,6 +295,7 @@ def _remove_unused_imports(tree: ast.Module) -> tuple[ast.Module, list[Issue]]:
             "unused_imports",
             f"Removed unused import '{name}'.",
             line=line,
+            column=1 if line is not None else None,
             severity="low",
             confidence="high",
         )
@@ -295,6 +313,7 @@ def _remove_duplicate_import_statements(tree: ast.Module) -> tuple[ast.Module, l
             "imports",
             f"Removed duplicate import statement '{signature}'.",
             line=line,
+            column=1 if line is not None else None,
             severity="low",
             confidence="high",
         )
@@ -320,6 +339,7 @@ def _repair_missing_fallback_returns(tree: ast.Module) -> tuple[ast.Module, list
                 "returns",
                 f"Added a fallback return for '{fallback_name}' to keep the function return path consistent.",
                 line=node.lineno,
+                column=node.col_offset + 1,
                 confidence="medium",
             )
         )
@@ -339,6 +359,7 @@ def _find_unreachable_code(tree: ast.Module) -> list[Issue]:
                         "unreachable_code",
                         "Found code after a terminal statement in the same block.",
                         line=getattr(stmt, "lineno", None),
+                        column=getattr(stmt, "col_offset", 0) + 1 if getattr(stmt, "lineno", None) is not None else None,
                         severity="low",
                         confidence="high",
                     )
@@ -379,6 +400,7 @@ def _find_inconsistent_returns(tree: ast.Module) -> list[Issue]:
                     "return_paths",
                     "Function still has at least one path that can fall through without returning a value.",
                     line=node.lineno,
+                    column=node.col_offset + 1,
                     severity="medium",
                     confidence="low",
                 )
@@ -389,6 +411,7 @@ def _find_inconsistent_returns(tree: ast.Module) -> list[Issue]:
                     "return_paths",
                     "Function mixes value returns and bare returns.",
                     line=node.lineno,
+                    column=node.col_offset + 1,
                     severity="medium",
                     confidence="medium",
                 )
@@ -430,6 +453,7 @@ def _apply_pep8_mode(tree: ast.Module) -> tuple[ast.Module, list[Issue]]:
                 "pep8_names",
                 f"Renamed '{old_name}' to '{new_name}' in PEP8 mode.",
                 line=rename_lines.get(old_name),
+                column=1 if rename_lines.get(old_name) is not None else None,
                 severity="low",
                 confidence="medium",
             )
@@ -510,23 +534,23 @@ def _alias_to_source(alias: ast.alias) -> str:
 
 
 def _normalize_quotes(source: str) -> tuple[str, list[Issue]]:
-    changed_lines: set[int] = set()
+    changed_points: set[tuple[int, int]] = set()
     tokens: list[tokenize.TokenInfo] = []
 
     for token in tokenize.generate_tokens(StringIO(source).readline):
         if token.type == tokenize.STRING:
             replacement = _maybe_single_quote(token.string)
             if replacement != token.string:
-                changed_lines.add(token.start[0])
+                changed_points.add((token.start[0], token.start[1] + 1))
                 token = token._replace(string=replacement)
         tokens.append(token)
 
-    if not changed_lines:
+    if not changed_points:
         return source, []
 
     return tokenize.untokenize(tokens), [
-        Issue("quotes", "Normalized simple string quotes to single quotes.", line=line, confidence="high")
-        for line in sorted(changed_lines)
+        Issue("quotes", "Normalized simple string quotes to single quotes.", line=line, column=column, confidence="high")
+        for line, column in sorted(changed_points)
     ]
 
 
@@ -693,8 +717,180 @@ def _ensure_trailing_newline(source: str, issues: list[Issue]) -> str:
     if source.endswith("\n"):
         return source
     line = source.count("\n") + 1 if source else 1
-    issues.append(Issue("newline", "Ensured a final newline.", line=line, severity="low", confidence="high"))
+    last_line = source.rsplit("\n", 1)[-1] if source else ""
+    issues.append(Issue("newline", "Ensured a final newline.", line=line, column=len(last_line) + 1, severity="low", confidence="high"))
     return source + "\n"
+
+
+def _finalize_issues(issues: list[Issue]) -> list[Issue]:
+    grouped: list[Issue] = []
+    remaining: list[Issue] = []
+
+    grouping_keys = {
+        ("indentation", "Rebuilt indentation to produce parseable Python."),
+        ("missing_colons", "Inserted missing block colons where the syntax was obvious."),
+        ("quotes", "Balanced or closed broken string literals where the syntax was obvious."),
+        ("unreachable_code", "Found code after a terminal statement in the same block."),
+    }
+
+    buckets: dict[tuple[str, str, str, str], list[Issue]] = defaultdict(list)
+    for issue in issues:
+        key = (issue.type, issue.message)
+        if key in grouping_keys:
+            buckets[(issue.type, issue.message, issue.severity, issue.confidence)].append(issue)
+            continue
+        remaining.append(issue)
+
+    for issue_type, message, severity, confidence in sorted(buckets.keys()):
+        bucket = buckets[(issue_type, message, severity, confidence)]
+        grouped.append(_group_line_issues(bucket))
+
+    grouped.extend(_group_named_issues(remaining, "unused_imports", r"Removed unused import '([^']+)'\.", "Removed unused imports"))
+    grouped.extend(_group_duplicate_import_statement_issues(remaining))
+
+    passthrough_types = {"unused_imports", "imports"}
+    seen_grouped = {"unused_imports", "imports"}
+    for issue in remaining:
+        if issue.type in passthrough_types and issue.message.startswith("Removed "):
+            continue
+        grouped.append(issue)
+
+    return sorted(grouped, key=_issue_sort_key)
+
+
+def _group_line_issues(issues: list[Issue]) -> Issue:
+    sorted_issues = sorted(issues, key=lambda item: (item.line or 0, item.column or 0))
+    ranges = _line_ranges([issue.line for issue in sorted_issues if issue.line is not None])
+    count = len(sorted_issues)
+    if count == 1:
+        suffix = "."
+    else:
+        location_text = _format_line_ranges(ranges)
+        suffix = f" across {count} lines ({location_text})." if location_text else f" across {count} lines."
+    return Issue(
+        sorted_issues[0].type,
+        f"{sorted_issues[0].message.rstrip('.')}{suffix}",
+        line=sorted_issues[0].line,
+        column=sorted_issues[0].column,
+        severity=sorted_issues[0].severity,
+        confidence=sorted_issues[0].confidence,
+    )
+
+
+def _group_named_issues(
+    issues: list[Issue],
+    issue_type: str,
+    pattern: str,
+    prefix: str,
+) -> list[Issue]:
+    buckets: dict[tuple[int | None, int | None, str, str], list[str]] = defaultdict(list)
+    regex = re.compile(pattern)
+
+    if not issues:
+        return []
+
+    for issue in issues:
+        if issue.type != issue_type:
+            continue
+        match = regex.fullmatch(issue.message)
+        if not match:
+            continue
+        buckets[(issue.line, issue.column, issue.severity, issue.confidence)].append(match.group(1))
+
+    grouped: list[Issue] = []
+    for (line, column, severity, confidence), names in buckets.items():
+        if len(names) == 1:
+            if issue_type == "unused_imports":
+                message = f"Removed unused import '{names[0]}'."
+            else:
+                message = f"Removed duplicate import statement '{names[0]}'."
+            grouped.append(Issue(issue_type, message, line=line, column=column, severity=severity, confidence=confidence))
+            continue
+        grouped.append(
+            Issue(
+                issue_type,
+                f"{prefix}: {', '.join(sorted(names))}.",
+                line=line,
+                column=column,
+                severity=severity,
+                confidence=confidence,
+            )
+        )
+    return grouped
+
+
+def _group_duplicate_import_statement_issues(issues: list[Issue]) -> list[Issue]:
+    pattern = re.compile(r"Removed duplicate import statement '([^']+)'\.")
+    buckets: dict[tuple[str, str, str], list[Issue]] = defaultdict(list)
+
+    for issue in issues:
+        if issue.type != "imports":
+            continue
+        match = pattern.fullmatch(issue.message)
+        if not match:
+            continue
+        signature = match.group(1)
+        buckets[(signature, issue.severity, issue.confidence)].append(issue)
+
+    grouped: list[Issue] = []
+    for (signature, severity, confidence), bucket in buckets.items():
+        sorted_bucket = sorted(bucket, key=lambda item: (item.line or 0, item.column or 0))
+        ranges = _line_ranges([issue.line for issue in sorted_bucket if issue.line is not None])
+        count = len(sorted_bucket)
+        if count == 1:
+            message = f"Removed duplicate import statement '{signature}'."
+        else:
+            message = f"Removed duplicate import statement '{signature}' across {count} lines ({_format_line_ranges(ranges)})."
+        grouped.append(
+            Issue(
+                "imports",
+                message,
+                line=sorted_bucket[0].line,
+                column=sorted_bucket[0].column,
+                severity=severity,
+                confidence=confidence,
+            )
+        )
+
+    return grouped
+
+
+def _line_ranges(lines: list[int]) -> list[tuple[int, int]]:
+    if not lines:
+        return []
+    unique_lines = sorted(set(lines))
+    ranges: list[tuple[int, int]] = []
+    start = end = unique_lines[0]
+    for line in unique_lines[1:]:
+        if line == end + 1:
+            end = line
+            continue
+        ranges.append((start, end))
+        start = end = line
+    ranges.append((start, end))
+    return ranges
+
+
+def _format_line_ranges(ranges: list[tuple[int, int]]) -> str:
+    parts: list[str] = []
+    for start, end in ranges:
+        parts.append(str(start) if start == end else f"{start}-{end}")
+    return ", ".join(parts)
+
+
+def _issue_sort_key(issue: Issue) -> tuple[int, int, str, str]:
+    return (issue.line or 10**9, issue.column or 10**9, issue.severity, issue.type)
+
+
+def _dedupe_points(points: list[tuple[int, int | None]]) -> list[tuple[int, int | None]]:
+    return sorted(set(points), key=lambda item: (item[0], item[1] or 0))
+
+
+def _first_quote_column(line: str) -> int | None:
+    for index, char in enumerate(line, start=1):
+        if char in {"'", '"'}:
+            return index
+    return None
 
 
 def _is_docstring(node: ast.stmt) -> bool:
