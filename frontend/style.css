@@ -199,8 +199,12 @@ button {
 .workspace-top,
 .workspace-bottom {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) minmax(320px, 0.78fr);
   gap: 14px;
+}
+
+.workspace-bottom {
+  grid-template-columns: 1fr;
 }
 
 .card,
