@@ -111,8 +111,9 @@ button {
   border-radius: calc(var(--radius-xl) + 8px);
   border: 1px solid var(--surface-line);
   box-shadow: var(--shadow);
-  object-fit: cover;
-  object-position: center;
+  object-fit: contain;
+  object-position: center center;
+  background: rgba(9, 15, 28, 0.92);
 }
 
 .hero-title {
