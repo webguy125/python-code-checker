@@ -40,6 +40,8 @@ const elements = {
   clearInput: document.getElementById("clear-input"),
   copyOutput: document.getElementById("copy-output"),
   cleanedOutput: document.getElementById("cleaned-output"),
+  mockDrawer: document.getElementById("mock-drawer"),
+  mockDrawerToggle: document.getElementById("mock-drawer-toggle"),
   issuesList: document.getElementById("issues-list"),
   issuesEmpty: document.getElementById("issues-empty"),
   issuesDetail: document.getElementById("issues-detail"),
@@ -59,6 +61,7 @@ const state = {
   abortController: null,
   lastResultText: "",
   hasFreshResult: false,
+  mockDrawerCollapsed: false,
 };
 
 function setStatus(target, text, tone = "neutral") {
@@ -321,6 +324,14 @@ function renderMockTest(mockTest) {
   setStatus(elements.mockSummary, "Mock test passed", "ok");
 }
 
+function syncMockDrawer() {
+  const enabled = elements.runMock.checked;
+  document.body.classList.toggle("mock-drawer-enabled", enabled);
+  document.body.classList.toggle("mock-drawer-collapsed", enabled && state.mockDrawerCollapsed);
+  elements.mockDrawer.setAttribute("aria-hidden", enabled ? "false" : "true");
+  elements.mockDrawerToggle.setAttribute("aria-expanded", enabled && !state.mockDrawerCollapsed ? "true" : "false");
+}
+
 function setLoading(isLoading) {
   elements.runAudit.disabled = isLoading;
   elements.styleMode.disabled = isLoading;
@@ -369,7 +380,7 @@ async function copyText(value) {
 async function runAudit() {
   const code = elements.codeInput.value.trim();
   if (!code) {
-    setStatus(elements.inputStatus, "Paste Python code first", "error");
+    setStatus(elements.resultSummary, "Paste Python code first", "error");
     return;
   }
 
@@ -465,11 +476,11 @@ function markResultsStale() {
   if (!state.hasFreshResult) return;
   state.hasFreshResult = false;
   setStatus(elements.resultSummary, "Input changed. Run the audit again.", "warn");
-  setStatus(elements.inputStatus, "Results are stale", "warn");
 }
 
 elements.codeInput.value = readSavedInput() || SAMPLE_CODE;
 renderOutputPlaceholder();
+syncMockDrawer();
 
 elements.codeInput.addEventListener("input", () => {
   saveInput(elements.codeInput.value);
@@ -507,16 +518,29 @@ elements.styleMode.addEventListener("change", () => {
     return;
   }
 });
+elements.runMock.addEventListener("change", () => {
+  if (elements.runMock.checked) {
+    state.mockDrawerCollapsed = false;
+  }
+  syncMockDrawer();
+});
+elements.mockDrawerToggle.addEventListener("click", () => {
+  if (!elements.runMock.checked) return;
+  state.mockDrawerCollapsed = !state.mockDrawerCollapsed;
+  syncMockDrawer();
+});
 elements.clearInput.addEventListener("click", () => {
   setInput("");
   state.lastResultText = "";
   state.hasFreshResult = false;
   elements.styleMode.value = "standard";
   elements.runMock.checked = false;
+  state.mockDrawerCollapsed = false;
   renderOutputPlaceholder();
   setEmptyState("No audit has been run yet. Results will appear here after you submit code.");
   renderMockTest(null);
   setStatus(elements.resultSummary, "Waiting for first audit", "neutral");
+  syncMockDrawer();
 });
 elements.copyOutput.addEventListener("click", async () => {
   if (!state.hasFreshResult || !state.lastResultText.trim()) {
