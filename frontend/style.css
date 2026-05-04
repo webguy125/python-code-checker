@@ -106,7 +106,7 @@ button {
 .hero-banner {
   display: block;
   width: 100%;
-  height: auto;
+  height: 168px;
   border-radius: calc(var(--radius-xl) + 8px);
   border: 1px solid var(--surface-line);
   box-shadow: var(--shadow);
@@ -585,6 +585,7 @@ pre {
   }
 
   .hero-banner {
+    height: 124px;
     border-radius: 16px;
   }
 
