@@ -53,9 +53,9 @@ button {
 
 .page-shell {
   position: relative;
-  width: min(1320px, calc(100% - 32px));
+  width: min(1500px, calc(100% - 24px));
   margin: 0 auto;
-  padding: 28px 0 40px;
+  padding: 18px 0 28px;
 }
 
 .background-glow {
@@ -92,9 +92,9 @@ button {
 .hero {
   display: grid;
   grid-template-columns: minmax(0, 1.6fr) minmax(280px, 0.9fr);
-  gap: 22px;
+  gap: 14px;
   align-items: stretch;
-  margin-bottom: 20px;
+  margin-bottom: 14px;
 }
 
 .hero-copy,
@@ -110,7 +110,7 @@ button {
 
 .hero-copy {
   border-radius: calc(var(--radius-xl) + 8px);
-  padding: 30px 32px;
+  padding: 22px 24px;
 }
 
 .eyebrow,
@@ -133,9 +133,9 @@ button {
 }
 
 .hero h1 {
-  font-size: clamp(2.5rem, 4vw, 4.5rem);
-  line-height: 0.94;
-  max-width: 12ch;
+  font-size: clamp(1.95rem, 3vw, 3.2rem);
+  line-height: 0.96;
+  max-width: 14ch;
 }
 
 .lede,
@@ -149,16 +149,16 @@ button {
 
 .lede {
   max-width: 62ch;
-  margin: 16px 0 0;
-  font-size: 1.05rem;
-  line-height: 1.7;
+  margin: 12px 0 0;
+  font-size: 0.96rem;
+  line-height: 1.55;
 }
 
 .hero-stats {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
-  margin-top: 20px;
+  gap: 8px;
+  margin-top: 14px;
 }
 
 .hero-stats span,
@@ -167,16 +167,16 @@ button {
   align-items: center;
   gap: 8px;
   border-radius: 999px;
-  padding: 9px 14px;
+  padding: 7px 12px;
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.08);
   color: var(--text);
-  font-size: 0.94rem;
+  font-size: 0.84rem;
 }
 
 .hero-panel {
   border-radius: calc(var(--radius-xl) + 8px);
-  padding: 18px;
+  padding: 12px;
 }
 
 .accent-card {
@@ -184,67 +184,76 @@ button {
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  min-height: 184px;
+  min-height: 148px;
   border-radius: var(--radius-lg);
   background:
     linear-gradient(160deg, rgba(56, 189, 248, 0.18), rgba(16, 27, 49, 0.93) 55%),
     rgba(9, 15, 28, 0.95);
   border: 1px solid rgba(125, 211, 252, 0.18);
-  padding: 18px;
+  padding: 14px;
 }
 
 .panel-title {
-  font-size: 1.5rem;
+  font-size: 1.2rem;
   margin-bottom: 8px;
 }
 
 .panel-text {
   margin: 0;
-  line-height: 1.7;
+  line-height: 1.5;
+  font-size: 0.9rem;
 }
 
 .layout {
   display: grid;
-  grid-template-columns: minmax(0, 1.65fr) minmax(280px, 0.75fr);
-  gap: 20px;
+  grid-template-columns: minmax(0, 1.8fr) minmax(260px, 0.62fr);
+  gap: 14px;
 }
 
 .workspace {
   display: grid;
-  gap: 18px;
+  gap: 14px;
+}
+
+.workspace-top,
+.workspace-bottom {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 14px;
 }
 
 .sidebar {
   display: grid;
-  gap: 18px;
+  gap: 14px;
   align-content: start;
 }
 
 .card,
 .ad-slot {
-  border-radius: var(--radius-xl);
+  border-radius: 18px;
 }
 
 .card {
-  padding: 22px;
+  padding: 16px 18px;
+  background: rgba(9, 15, 28, 0.78);
 }
 
 .card-head {
   display: flex;
   justify-content: space-between;
-  gap: 16px;
+  gap: 12px;
   align-items: flex-start;
-  margin-bottom: 16px;
+  margin-bottom: 12px;
 }
 
 .card h2 {
-  font-size: 1.45rem;
+  font-size: 1.08rem;
   line-height: 1.1;
 }
 
 .card-actions {
   display: flex;
-  gap: 10px;
+  gap: 8px;
   flex-wrap: wrap;
   justify-content: flex-end;
   align-items: center;
@@ -254,12 +263,13 @@ button {
   display: inline-flex;
   align-items: center;
   gap: 10px;
-  min-height: 44px;
-  padding: 0 14px;
+  min-height: 38px;
+  padding: 0 12px;
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.04);
   border: 1px solid rgba(255, 255, 255, 0.1);
   color: var(--text);
+  font-size: 0.84rem;
 }
 
 .toggle-option input {
@@ -270,12 +280,13 @@ button {
   display: inline-flex;
   align-items: center;
   gap: 10px;
-  min-height: 44px;
-  padding: 0 14px;
+  min-height: 38px;
+  padding: 0 12px;
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.04);
   border: 1px solid rgba(255, 255, 255, 0.1);
   color: var(--text);
+  font-size: 0.84rem;
 }
 
 .select-option select {
@@ -287,8 +298,8 @@ button {
 
 .primary-button,
 .ghost-button {
-  min-height: 44px;
-  padding: 0 16px;
+  min-height: 38px;
+  padding: 0 14px;
   border-radius: 999px;
   transition: transform 140ms ease, background-color 140ms ease, border-color 140ms ease, opacity 140ms ease;
 }
@@ -316,6 +327,13 @@ button {
   border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
+.primary-button,
+.ghost-button,
+.select-option,
+.toggle-option {
+  white-space: nowrap;
+}
+
 .primary-button:disabled,
 .ghost-button:disabled {
   opacity: 0.55;
@@ -324,18 +342,18 @@ button {
 
 textarea {
   width: 100%;
-  min-height: 360px;
+  min-height: 460px;
   resize: vertical;
   border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 22px;
-  padding: 18px 18px 20px;
+  border-radius: 16px;
+  padding: 14px 14px 16px;
   color: var(--text);
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.02), rgba(255, 255, 255, 0.01)),
     rgba(4, 9, 18, 0.88);
   font-family: var(--font-mono);
-  font-size: 0.95rem;
-  line-height: 1.75;
+  font-size: 0.85rem;
+  line-height: 1.55;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
 }
 
@@ -351,19 +369,19 @@ textarea::placeholder {
 .editor-footer {
   display: flex;
   justify-content: space-between;
-  gap: 14px;
+  gap: 10px;
   align-items: center;
-  margin-top: 14px;
+  margin-top: 10px;
   flex-wrap: wrap;
 }
 
 .editor-footer-main {
   display: grid;
-  gap: 8px;
+  gap: 6px;
 }
 
 .hint {
-  font-size: 0.92rem;
+  font-size: 0.8rem;
 }
 
 .status-chip {
@@ -394,37 +412,37 @@ textarea::placeholder {
 
 .code-frame {
   overflow: hidden;
-  border-radius: 22px;
+  border-radius: 16px;
   border: 1px solid rgba(255, 255, 255, 0.1);
   background: rgba(4, 9, 18, 0.88);
 }
 
 pre {
   margin: 0;
-  padding: 18px;
+  padding: 14px;
   max-height: 460px;
   overflow: auto;
   white-space: pre-wrap;
   word-break: break-word;
   color: #eaf2ff;
   font-family: var(--font-mono);
-  font-size: 0.92rem;
-  line-height: 1.72;
+  font-size: 0.82rem;
+  line-height: 1.56;
 }
 
 .issues-list {
   display: grid;
-  gap: 12px;
+  gap: 10px;
 }
 
 .mock-results {
   display: grid;
-  gap: 14px;
+  gap: 10px;
 }
 
 .mock-section h3 {
   margin: 0 0 10px;
-  font-size: 1rem;
+  font-size: 0.88rem;
 }
 
 .mock-functions {
@@ -439,15 +457,15 @@ pre {
 }
 
 .sample-call-card {
-  border-radius: 16px;
-  padding: 14px;
+  border-radius: 14px;
+  padding: 12px 14px;
   background: rgba(255, 255, 255, 0.035);
   border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .issue-card {
-  border-radius: 18px;
-  padding: 16px;
+  border-radius: 14px;
+  padding: 12px 14px;
   background: rgba(255, 255, 255, 0.035);
   border: 1px solid rgba(255, 255, 255, 0.08);
 }
@@ -475,8 +493,8 @@ pre {
   display: inline-flex;
   align-items: center;
   border-radius: 999px;
-  padding: 5px 10px;
-  font-size: 0.8rem;
+  padding: 5px 9px;
+  font-size: 0.72rem;
   line-height: 1;
   background: rgba(255, 255, 255, 0.06);
   color: #dce7fb;
@@ -505,7 +523,8 @@ pre {
 .issue-message {
   margin: 0;
   color: #d9e3f7;
-  line-height: 1.65;
+  line-height: 1.5;
+  font-size: 0.84rem;
 }
 
 .issue-code {
@@ -516,22 +535,24 @@ pre {
   border: 1px solid rgba(255, 255, 255, 0.08);
   color: #d8e7ff;
   font-family: var(--font-mono);
-  font-size: 0.9rem;
+  font-size: 0.82rem;
   overflow: auto;
 }
 
 .empty-state {
-  border-radius: 18px;
-  padding: 18px;
+  border-radius: 14px;
+  padding: 12px 14px;
   border: 1px dashed rgba(255, 255, 255, 0.14);
   background: rgba(255, 255, 255, 0.025);
-  line-height: 1.7;
+  line-height: 1.5;
+  font-size: 0.84rem;
 }
 
 .info-list {
   margin: 0;
   padding-left: 18px;
-  line-height: 1.75;
+  line-height: 1.55;
+  font-size: 0.86rem;
 }
 
 .info-list code {
@@ -540,8 +561,8 @@ pre {
 }
 
 .ad-slot {
-  padding: 22px;
-  min-height: 190px;
+  padding: 14px 16px 16px;
+  min-height: 148px;
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -553,12 +574,13 @@ pre {
 }
 
 .ad-slot strong {
-  font-size: 1.08rem;
+  font-size: 0.98rem;
 }
 
 .ad-slot p {
   margin: 0;
-  line-height: 1.6;
+  line-height: 1.45;
+  font-size: 0.84rem;
 }
 
 .sr-only {
@@ -575,7 +597,9 @@ pre {
 
 @media (max-width: 1080px) {
   .hero,
-  .layout {
+  .layout,
+  .workspace-top,
+  .workspace-bottom {
     grid-template-columns: 1fr;
   }
 
@@ -586,23 +610,23 @@ pre {
 
 @media (max-width: 760px) {
   .page-shell {
-    width: min(100%, calc(100% - 20px));
-    padding-top: 18px;
+    width: min(100%, calc(100% - 16px));
+    padding-top: 12px;
   }
 
   .hero-copy,
   .card,
   .hero-panel,
   .ad-slot {
-    border-radius: 22px;
+    border-radius: 16px;
   }
 
   .hero-copy {
-    padding: 22px;
+    padding: 16px;
   }
 
   .card {
-    padding: 18px;
+    padding: 14px;
   }
 
   .card-head,
@@ -624,7 +648,7 @@ pre {
   }
 
   textarea {
-    min-height: 300px;
+    min-height: 320px;
   }
 
   pre {

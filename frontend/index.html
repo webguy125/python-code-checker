@@ -37,47 +37,64 @@
 
     <main class="layout">
       <section class="workspace" aria-label="Python audit workspace">
-        <div class="card editor-card">
-          <div class="card-head">
-            <div>
-              <p class="card-kicker">Input</p>
-              <h2>Paste Python code</h2>
+        <div class="workspace-top">
+          <div class="card editor-card">
+            <div class="card-head">
+              <div>
+                <p class="card-kicker">Input</p>
+                <h2>Paste Python code</h2>
+              </div>
+              <div class="card-actions">
+                <button type="button" class="ghost-button" id="load-sample">Load sample</button>
+                <button type="button" class="ghost-button" id="clear-input">Clear</button>
+              </div>
             </div>
-            <div class="card-actions">
-              <button type="button" class="ghost-button" id="load-sample">Load sample</button>
-              <button type="button" class="ghost-button" id="clear-input">Clear</button>
+
+            <label class="sr-only" for="code-input">Python source code</label>
+            <textarea
+              id="code-input"
+              name="code"
+              spellcheck="false"
+              autocapitalize="off"
+              autocomplete="off"
+              autocorrect="off"
+              placeholder="def greet(name):&#10;    print(f'Hello, {name}!')&#10;&#10;greet('world')"
+            ></textarea>
+
+            <div class="editor-footer">
+              <div class="editor-footer-main">
+                <div class="status-chip" id="input-status">Ready to audit</div>
+                <div class="hint">Tip: press Ctrl + Enter to run the audit.</div>
+              </div>
+              <div class="card-actions">
+                <label class="select-option" for="style-mode">
+                  <span>Style mode</span>
+                  <select id="style-mode" name="style-mode">
+                    <option value="standard">Standard</option>
+                    <option value="pep8">PEP8</option>
+                  </select>
+                </label>
+                <label class="toggle-option" for="run-mock">
+                  <input type="checkbox" id="run-mock" name="run-mock">
+                  <span>Run mock test</span>
+                </label>
+                <button type="button" class="primary-button" id="run-audit">Run audit</button>
+              </div>
             </div>
           </div>
 
-          <label class="sr-only" for="code-input">Python source code</label>
-          <textarea
-            id="code-input"
-            name="code"
-            spellcheck="false"
-            autocapitalize="off"
-            autocomplete="off"
-            autocorrect="off"
-            placeholder="def greet(name):&#10;    print(f'Hello, {name}!')&#10;&#10;greet('world')"
-          ></textarea>
-
-          <div class="editor-footer">
-            <div class="editor-footer-main">
-              <div class="status-chip" id="input-status">Ready to audit</div>
-              <div class="hint">Tip: press Ctrl + Enter to run the audit.</div>
+          <div class="card result-card">
+            <div class="card-head">
+              <div>
+                <p class="card-kicker">Output</p>
+                <h2>Cleaned code</h2>
+              </div>
+              <div class="card-actions">
+                <button type="button" class="ghost-button" id="copy-output">Copy output</button>
+              </div>
             </div>
-            <div class="card-actions">
-              <label class="select-option" for="style-mode">
-                <span>Style mode</span>
-                <select id="style-mode" name="style-mode">
-                  <option value="standard">Standard</option>
-                  <option value="pep8">PEP8</option>
-                </select>
-              </label>
-              <label class="toggle-option" for="run-mock">
-                <input type="checkbox" id="run-mock" name="run-mock">
-                <span>Run mock test</span>
-              </label>
-              <button type="button" class="primary-button" id="run-audit">Run audit</button>
+            <div class="code-frame">
+              <pre id="cleaned-output" aria-live="polite"><code>Run an audit to see cleaned code here.</code></pre>
             </div>
           </div>
         </div>
@@ -88,69 +105,55 @@
           <p>Reserved for a responsive ad unit. This slot stays visible without interrupting the workflow.</p>
         </aside>
 
-        <div class="card result-card">
-          <div class="card-head">
-            <div>
-              <p class="card-kicker">Output</p>
-              <h2>Cleaned code</h2>
+        <div class="workspace-bottom">
+          <div class="card issues-card">
+            <div class="card-head">
+              <div>
+                <p class="card-kicker">Findings</p>
+                <h2>Issues list</h2>
+              </div>
+              <div class="status-chip neutral" id="result-summary">Waiting for first audit</div>
             </div>
-            <div class="card-actions">
-              <button type="button" class="ghost-button" id="copy-output">Copy output</button>
+
+            <div id="issues-empty" class="empty-state">
+              No audit has been run yet. Results will appear here after you submit code.
             </div>
+            <div id="issues-list" class="issues-list" hidden></div>
           </div>
 
-          <div class="code-frame">
-            <pre id="cleaned-output" aria-live="polite"><code>Run an audit to see cleaned code here.</code></pre>
-          </div>
-        </div>
+          <div class="card mock-card">
+            <div class="card-head">
+              <div>
+                <p class="card-kicker">Mock Test</p>
+                <h2>Sandbox execution</h2>
+              </div>
+              <div class="status-chip neutral" id="mock-summary">Mock test not requested</div>
+            </div>
 
-        <div class="card issues-card">
-          <div class="card-head">
-            <div>
-              <p class="card-kicker">Findings</p>
-              <h2>Issues list</h2>
+            <div id="mock-empty" class="empty-state">
+              Enable “Run mock test” to execute the repaired script in a restricted sandbox and capture output.
             </div>
-            <div class="status-chip neutral" id="result-summary">Waiting for first audit</div>
-          </div>
-
-          <div id="issues-empty" class="empty-state">
-            No audit has been run yet. Results will appear here after you submit code.
-          </div>
-          <div id="issues-list" class="issues-list" hidden></div>
-        </div>
-
-        <div class="card mock-card">
-          <div class="card-head">
-            <div>
-              <p class="card-kicker">Mock Test</p>
-              <h2>Sandbox execution</h2>
-            </div>
-            <div class="status-chip neutral" id="mock-summary">Mock test not requested</div>
-          </div>
-
-          <div id="mock-empty" class="empty-state">
-            Enable “Run mock test” to execute the repaired script in a restricted sandbox and capture output.
-          </div>
-          <div id="mock-results" class="mock-results" hidden>
-            <div class="mock-section">
-              <h3>Output from mock run</h3>
-              <pre id="mock-stdout"><code>No output captured.</code></pre>
-            </div>
-            <div class="mock-section">
-              <h3>Functions found in repaired code</h3>
-              <div id="mock-functions" class="mock-functions"></div>
-            </div>
-            <div class="mock-section">
-              <h3>Zero-argument functions executed</h3>
-              <div id="mock-called-functions" class="mock-functions"></div>
-            </div>
-            <div class="mock-section">
-              <h3>Sample-called functions</h3>
-              <div id="mock-sample-calls" class="sample-calls"></div>
-            </div>
-            <div class="mock-section" id="mock-error-section" hidden>
-              <h3>Runtime error</h3>
-              <div id="mock-error" class="empty-state"></div>
+            <div id="mock-results" class="mock-results" hidden>
+              <div class="mock-section">
+                <h3>Output from mock run</h3>
+                <pre id="mock-stdout"><code>No output captured.</code></pre>
+              </div>
+              <div class="mock-section">
+                <h3>Functions found in repaired code</h3>
+                <div id="mock-functions" class="mock-functions"></div>
+              </div>
+              <div class="mock-section">
+                <h3>Zero-argument functions executed</h3>
+                <div id="mock-called-functions" class="mock-functions"></div>
+              </div>
+              <div class="mock-section">
+                <h3>Sample-called functions</h3>
+                <div id="mock-sample-calls" class="sample-calls"></div>
+              </div>
+              <div class="mock-section" id="mock-error-section" hidden>
+                <h3>Runtime error</h3>
+                <div id="mock-error" class="empty-state"></div>
+              </div>
             </div>
           </div>
         </div>
