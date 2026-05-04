@@ -76,7 +76,7 @@
               </div>
             </div>
             <div class="code-frame">
-              <pre id="cleaned-output" aria-live="polite"><code>Run an audit to see cleaned code here.</code></pre>
+              <div id="cleaned-output" class="output-panel" aria-live="polite"></div>
             </div>
           </div>
         </div>
@@ -142,32 +142,11 @@
       </section>
 
       <aside class="sidebar" aria-label="Supporting content">
-        <div class="card info-card">
-          <p class="card-kicker">Behavior</p>
-          <h2>What this page does</h2>
-          <ul class="info-list">
-            <li>Sends code to the hosted Worker endpoint at <code>/audit</code>.</li>
-            <li>Renders cleaned code and normalized issue details.</li>
-            <li>Optionally runs the repaired script in a restricted mock sandbox and shows what executed.</li>
-            <li>Persists the last input locally so refreshes do not lose work.</li>
-          </ul>
-        </div>
-
         <aside class="ad-slot ad-slot-rail" aria-label="Advertisement placeholder">
           <span class="ad-label">Ad placeholder</span>
           <strong>Rail unit</strong>
           <p>Reserved for a medium rectangle or sticky sponsor card on wider screens.</p>
         </aside>
-
-        <div class="card tips-card">
-          <p class="card-kicker">Shortcuts</p>
-          <h2>Fast interaction</h2>
-          <ul class="info-list">
-            <li><code>Ctrl</code> + <code>Enter</code> runs the audit.</li>
-            <li>Copy cleaned code with one click.</li>
-            <li>Errors are shown inline and keep the workspace usable.</li>
-          </ul>
-        </div>
       </aside>
     </main>
   </div>

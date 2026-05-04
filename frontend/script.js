@@ -7,6 +7,29 @@ def area(radius):
 
 print(area(5))
 `;
+const OUTPUT_PLACEHOLDER_HTML = `
+  <div class="output-placeholder">
+    <div class="output-placeholder-group">
+      <p class="card-kicker">Behavior</p>
+      <h3>What this page does</h3>
+      <ul class="output-placeholder-list">
+        <li>Sends code to the hosted Worker endpoint at <code>/audit</code>.</li>
+        <li>Renders cleaned code and normalized issue details.</li>
+        <li>Optionally runs the repaired script in a restricted mock sandbox and shows what executed.</li>
+        <li>Persists the last input locally so refreshes do not lose work.</li>
+      </ul>
+    </div>
+    <div class="output-placeholder-group">
+      <p class="card-kicker">Shortcuts</p>
+      <h3>Fast interaction</h3>
+      <ul class="output-placeholder-list">
+        <li><code>Ctrl</code> + <code>Enter</code> runs the audit.</li>
+        <li>Copy cleaned code with one click.</li>
+        <li>Errors are shown inline and keep the workspace usable.</li>
+      </ul>
+    </div>
+  </div>
+`;
 
 const elements = {
   codeInput: document.getElementById("code-input"),
@@ -178,6 +201,14 @@ function extractErrorDetails(payload) {
   };
 }
 
+function renderOutputPlaceholder() {
+  elements.cleanedOutput.innerHTML = OUTPUT_PLACEHOLDER_HTML;
+}
+
+function renderOutputCode(code) {
+  elements.cleanedOutput.innerHTML = `<pre><code>${escapeHtml(code)}</code></pre>`;
+}
+
 function renderIssues(issues) {
   if (!issues.length) {
     elements.issuesList.hidden = true;
@@ -228,7 +259,7 @@ function renderResult(payload) {
   const mockTest = extractMockTest(payload);
   const summary = extractSummary(payload, issues);
 
-  elements.cleanedOutput.innerHTML = `<code>${escapeHtml(cleanedCode)}</code>`;
+  renderOutputCode(cleanedCode);
   state.lastResultText = cleanedCode;
   state.hasFreshResult = true;
   renderIssues(issues);
@@ -382,10 +413,10 @@ async function runAudit() {
     const fallbackCode = typeof source?.cleaned_code === "string" ? source.cleaned_code : "";
 
     if (fallbackCode.trim()) {
-      elements.cleanedOutput.innerHTML = `<code>${escapeHtml(fallbackCode)}</code>`;
+      renderOutputCode(fallbackCode);
       state.lastResultText = fallbackCode;
     } else {
-      elements.cleanedOutput.innerHTML = "<code>Unable to load cleaned code. Check the endpoint response and try again.</code>";
+      elements.cleanedOutput.innerHTML = "<pre><code>Unable to load cleaned code. Check the endpoint response and try again.</code></pre>";
       state.lastResultText = "";
     }
     renderMockTest(null);
@@ -435,7 +466,7 @@ function markResultsStale() {
 
 elements.codeInput.value = readSavedInput() || SAMPLE_CODE;
 setStatus(elements.inputStatus, elements.codeInput.value.trim() ? "Ready to audit" : "Paste Python code first", elements.codeInput.value.trim() ? "neutral" : "error");
-elements.cleanedOutput.innerHTML = "<code>Run an audit to see cleaned code here.</code>";
+renderOutputPlaceholder();
 
 elements.codeInput.addEventListener("input", () => {
   saveInput(elements.codeInput.value);
@@ -472,7 +503,7 @@ elements.clearInput.addEventListener("click", () => {
   state.hasFreshResult = false;
   elements.styleMode.value = "standard";
   elements.runMock.checked = false;
-  elements.cleanedOutput.innerHTML = "<code>Run an audit to see cleaned code here.</code>";
+  renderOutputPlaceholder();
   setEmptyState("No audit has been run yet. Results will appear here after you submit code.");
   renderMockTest(null);
   setStatus(elements.resultSummary, "Waiting for first audit", "neutral");

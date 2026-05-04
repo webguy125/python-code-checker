@@ -398,6 +398,43 @@ textarea::placeholder {
   background: rgba(4, 9, 18, 0.88);
 }
 
+.output-panel {
+  min-height: 460px;
+}
+
+.output-panel pre {
+  margin: 0;
+}
+
+.output-placeholder {
+  display: grid;
+  gap: 18px;
+  padding: 16px;
+}
+
+.output-placeholder-group h3 {
+  margin: 0 0 8px;
+  font-size: 0.94rem;
+  line-height: 1.2;
+}
+
+.output-placeholder-list {
+  margin: 0;
+  padding-left: 18px;
+  color: #d9e3f7;
+  line-height: 1.55;
+  font-size: 0.84rem;
+}
+
+.output-placeholder-list li + li {
+  margin-top: 8px;
+}
+
+.output-placeholder-list code {
+  font-family: var(--font-mono);
+  color: #dff3ff;
+}
+
 pre {
   margin: 0;
   padding: 14px;
@@ -634,6 +671,10 @@ pre {
   }
 
   textarea {
+    min-height: 320px;
+  }
+
+  .output-panel {
     min-height: 320px;
   }
 
