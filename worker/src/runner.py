@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import builtins
 import inspect
 import io
 import importlib
@@ -42,7 +43,10 @@ class SampleCall:
 
 def run_mock_test(source: str) -> dict:
     buffer = io.StringIO()
-    namespace = {"__builtins__": _safe_builtins(buffer)}
+    namespace = {
+        "__builtins__": _safe_builtins(buffer),
+        "__name__": "__mock_test__",
+    }
 
     try:
         compiled = compile(source, "<mock-test>", "exec")
@@ -190,6 +194,7 @@ def _blocked_input(*args, **kwargs):
 def _safe_builtins(buffer: io.StringIO) -> dict:
     return {
         "__import__": _blocked_import,
+        "__build_class__": builtins.__build_class__,
         "abs": abs,
         "all": all,
         "any": any,
@@ -209,6 +214,7 @@ def _safe_builtins(buffer: io.StringIO) -> dict:
         "str": str,
         "sum": sum,
         "tuple": tuple,
+        "object": object,
         "zip": zip,
         "Exception": Exception,
         "RuntimeError": RuntimeError,
