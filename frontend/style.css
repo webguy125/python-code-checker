@@ -143,7 +143,8 @@ body.mock-drawer-enabled .mock-drawer {
 .hero {
   display: block;
   position: relative;
-  margin-bottom: 14px;
+  max-width: 1460px;
+  margin: 0 auto 14px;
 }
 
 .card,
@@ -158,7 +159,7 @@ body.mock-drawer-enabled .mock-drawer {
 .hero-banner {
   display: block;
   width: 100%;
-  height: 168px;
+  height: 160px;
   border-radius: calc(var(--radius-xl) + 8px);
   border: 1px solid var(--surface-line);
   box-shadow: var(--shadow);
@@ -836,7 +837,7 @@ pre {
   }
 
   .hero-banner {
-    height: 124px;
+    height: 118px;
     border-radius: 16px;
   }
 
