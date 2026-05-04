@@ -16,36 +16,33 @@
           <h2>Sandbox execution</h2>
         </div>
       </div>
-
-      <aside class="ad-slot ad-slot-mock" id="mock-ad-slot" aria-label="Advertisement placeholder">
-        <span class="ad-label">Ad placeholder</span>
-        <strong>Sponsored placement</strong>
-        <p>Reserved for a mock-test rail unit until sandbox results are available.</p>
-      </aside>
-      <div class="mock-ad-stack" id="mock-ad-stack" hidden>
-        <aside class="ad-slot ad-slot-mock-compact" aria-label="Advertisement placeholder">
-          <span class="ad-label">Ad placeholder</span>
-          <strong>Rail sponsor</strong>
-        </aside>
-        <aside class="ad-slot ad-slot-mock-compact" aria-label="Advertisement placeholder">
-          <span class="ad-label">Ad placeholder</span>
-          <strong>Related placement</strong>
-        </aside>
-        <aside class="ad-slot ad-slot-mock-compact" aria-label="Advertisement placeholder">
-          <span class="ad-label">Ad placeholder</span>
-          <strong>Partner slot</strong>
-        </aside>
-        <aside class="ad-slot ad-slot-mock-compact" aria-label="Advertisement placeholder">
-          <span class="ad-label">Ad placeholder</span>
-          <strong>Utility slot</strong>
-        </aside>
-        <aside class="ad-slot ad-slot-mock" aria-label="Advertisement placeholder">
-          <span class="ad-label">Ad placeholder</span>
-          <strong>Extended placement</strong>
-          <p>Reserved for a long-form rail unit when mock output has nothing useful to show.</p>
-        </aside>
-      </div>
-        <div id="mock-results" class="mock-results" hidden>
+      <div id="mock-idle-state" class="mock-idle-state"></div>
+      <template id="mock-idle-template">
+        <div class="mock-ad-stack">
+          <aside class="ad-slot ad-slot-mock-compact" aria-label="Advertisement placeholder">
+            <span class="ad-label">Ad placeholder</span>
+            <strong>Rail sponsor</strong>
+          </aside>
+          <aside class="ad-slot ad-slot-mock-compact" aria-label="Advertisement placeholder">
+            <span class="ad-label">Ad placeholder</span>
+            <strong>Related placement</strong>
+          </aside>
+          <aside class="ad-slot ad-slot-mock-compact" aria-label="Advertisement placeholder">
+            <span class="ad-label">Ad placeholder</span>
+            <strong>Partner slot</strong>
+          </aside>
+          <aside class="ad-slot ad-slot-mock-compact" aria-label="Advertisement placeholder">
+            <span class="ad-label">Ad placeholder</span>
+            <strong>Utility slot</strong>
+          </aside>
+          <aside class="ad-slot ad-slot-mock" aria-label="Advertisement placeholder">
+            <span class="ad-label">Ad placeholder</span>
+            <strong>Extended placement</strong>
+            <p>Reserved for a long-form rail unit when mock output has nothing useful to show.</p>
+          </aside>
+        </div>
+      </template>
+      <div id="mock-results" class="mock-results" hidden>
         <div class="mock-section" id="mock-stdout-section">
             <pre id="mock-stdout"><code></code></pre>
           </div>

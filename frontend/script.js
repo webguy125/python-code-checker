@@ -41,8 +41,8 @@ const elements = {
   copyOutput: document.getElementById("copy-output"),
   cleanedOutput: document.getElementById("cleaned-output"),
   mockDrawer: document.getElementById("mock-drawer"),
-  mockAdSlot: document.getElementById("mock-ad-slot"),
-  mockAdStack: document.getElementById("mock-ad-stack"),
+  mockIdleState: document.getElementById("mock-idle-state"),
+  mockIdleTemplate: document.getElementById("mock-idle-template"),
   issuesList: document.getElementById("issues-list"),
   issuesEmpty: document.getElementById("issues-empty"),
   issuesDetail: document.getElementById("issues-detail"),
@@ -281,8 +281,7 @@ function renderResult(payload) {
 function renderMockTest(mockTest) {
   if (!mockTest) {
     elements.mockResults.hidden = true;
-    elements.mockAdSlot.hidden = true;
-    elements.mockAdStack.hidden = false;
+    renderMockIdleState(true);
     return;
   }
 
@@ -333,8 +332,18 @@ function renderMockTest(mockTest) {
   );
 
   elements.mockResults.hidden = !hasUsefulContent;
-  elements.mockAdSlot.hidden = true;
-  elements.mockAdStack.hidden = hasUsefulContent;
+  renderMockIdleState(!hasUsefulContent);
+}
+
+function renderMockIdleState(shouldShow) {
+  if (shouldShow) {
+    if (!elements.mockIdleState.hasChildNodes()) {
+      elements.mockIdleState.appendChild(elements.mockIdleTemplate.content.cloneNode(true));
+    }
+    return;
+  }
+
+  elements.mockIdleState.replaceChildren();
 }
 
 function syncMockDrawer() {
