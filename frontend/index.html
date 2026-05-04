@@ -9,21 +9,19 @@
 </head>
 <body>
   <aside class="mock-drawer" id="mock-drawer" aria-label="Mock test results" aria-hidden="true">
-    <button type="button" class="mock-drawer-toggle" id="mock-drawer-toggle" aria-expanded="false" aria-controls="mock-drawer-panel">
-      <span class="mock-drawer-toggle-text">Mock</span>
-    </button>
     <div class="mock-drawer-panel" id="mock-drawer-panel">
       <div class="card-head card-head-compact">
         <div>
           <p class="card-kicker">Mock Test</p>
           <h2>Sandbox execution</h2>
         </div>
-        <div class="status-chip neutral" id="mock-summary">Mock test not requested</div>
       </div>
 
-      <div id="mock-empty" class="empty-state">
-        Enable “Run mock test” to execute the repaired script in a restricted sandbox and capture output.
-      </div>
+      <aside class="ad-slot ad-slot-mock" id="mock-ad-slot" aria-label="Advertisement placeholder">
+        <span class="ad-label">Ad placeholder</span>
+        <strong>Sponsored placement</strong>
+        <p>Reserved for a mock-test rail unit until sandbox results are available.</p>
+      </aside>
       <div id="mock-results" class="mock-results" hidden>
         <div class="mock-section">
           <h3>Output from mock run</h3>

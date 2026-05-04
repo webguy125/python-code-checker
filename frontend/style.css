@@ -86,10 +86,8 @@ body.mock-drawer-enabled .page-shell {
   border: 1px solid rgba(170, 198, 255, 0.14);
   box-shadow: var(--shadow);
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  gap: 14px;
   z-index: 4;
-  transform: translateX(calc(-100% - 24px));
+  transform: translateX(calc(-100% - 12px));
   opacity: 0;
   pointer-events: none;
   transition: transform 180ms ease, opacity 180ms ease;
@@ -99,34 +97,6 @@ body.mock-drawer-enabled .mock-drawer {
   transform: translateX(0);
   opacity: 1;
   pointer-events: auto;
-}
-
-body.mock-drawer-enabled.mock-drawer-collapsed .mock-drawer {
-  transform: translateX(calc(-100% + 52px));
-  opacity: 1;
-  pointer-events: auto;
-}
-
-.mock-drawer-toggle {
-  align-self: start;
-  width: 36px;
-  min-height: 108px;
-  padding: 10px 8px;
-  border-radius: 16px;
-  background: rgba(255, 255, 255, 0.06);
-  color: var(--text);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  display: grid;
-  place-items: center;
-}
-
-.mock-drawer-toggle-text {
-  writing-mode: vertical-rl;
-  transform: rotate(180deg);
-  text-transform: uppercase;
-  letter-spacing: 0.2em;
-  font-size: 0.7rem;
-  color: var(--accent);
 }
 
 .mock-drawer-panel {
@@ -487,6 +457,10 @@ textarea::placeholder {
   margin-bottom: 0;
 }
 
+.ad-slot-mock {
+  min-height: 132px;
+}
+
 .output-panel {
   min-height: 460px;
 }
@@ -831,28 +805,11 @@ pre {
     bottom: 6px;
     height: min(72vh, 560px);
     transform: translateY(calc(100% + 18px));
-    grid-template-columns: 1fr;
-    grid-template-rows: auto minmax(0, 1fr);
-    gap: 10px;
     padding: 10px 12px 12px;
   }
 
   body.mock-drawer-enabled .mock-drawer {
     transform: translateY(0);
-  }
-
-  body.mock-drawer-enabled.mock-drawer-collapsed .mock-drawer {
-    transform: translateY(calc(100% - 54px));
-  }
-
-  .mock-drawer-toggle {
-    width: 100%;
-    min-height: 42px;
-  }
-
-  .mock-drawer-toggle-text {
-    writing-mode: initial;
-    transform: none;
   }
 
   .page-shell {

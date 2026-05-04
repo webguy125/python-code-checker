@@ -41,13 +41,11 @@ const elements = {
   copyOutput: document.getElementById("copy-output"),
   cleanedOutput: document.getElementById("cleaned-output"),
   mockDrawer: document.getElementById("mock-drawer"),
-  mockDrawerToggle: document.getElementById("mock-drawer-toggle"),
+  mockAdSlot: document.getElementById("mock-ad-slot"),
   issuesList: document.getElementById("issues-list"),
   issuesEmpty: document.getElementById("issues-empty"),
   issuesDetail: document.getElementById("issues-detail"),
   resultSummary: document.getElementById("result-summary"),
-  mockSummary: document.getElementById("mock-summary"),
-  mockEmpty: document.getElementById("mock-empty"),
   mockResults: document.getElementById("mock-results"),
   mockStdout: document.getElementById("mock-stdout"),
   mockFunctions: document.getElementById("mock-functions"),
@@ -61,7 +59,6 @@ const state = {
   abortController: null,
   lastResultText: "",
   hasFreshResult: false,
-  mockDrawerCollapsed: false,
 };
 
 function setStatus(target, text, tone = "neutral") {
@@ -279,14 +276,12 @@ function renderResult(payload) {
 function renderMockTest(mockTest) {
   if (!mockTest) {
     elements.mockResults.hidden = true;
-    elements.mockEmpty.hidden = false;
-    elements.mockEmpty.textContent = "Mock test not requested for this run.";
-    setStatus(elements.mockSummary, "Mock test not requested", "neutral");
+    elements.mockAdSlot.hidden = false;
     return;
   }
 
   elements.mockResults.hidden = false;
-  elements.mockEmpty.hidden = true;
+  elements.mockAdSlot.hidden = true;
   const stdout = typeof mockTest.stdout === "string" && mockTest.stdout.trim()
     ? mockTest.stdout
     : "No output was produced during the mock run.";
@@ -315,21 +310,17 @@ function renderMockTest(mockTest) {
     elements.mockErrorSection.hidden = false;
     const lineText = mockTest.error.line ? `Line ${mockTest.error.line}: ` : "";
     elements.mockError.textContent = `${lineText}${mockTest.error.type}: ${mockTest.error.message}`;
-    setStatus(elements.mockSummary, "Mock test failed", "error");
     return;
   }
 
   elements.mockErrorSection.hidden = true;
   elements.mockError.textContent = "";
-  setStatus(elements.mockSummary, "Mock test passed", "ok");
 }
 
 function syncMockDrawer() {
   const enabled = elements.runMock.checked;
   document.body.classList.toggle("mock-drawer-enabled", enabled);
-  document.body.classList.toggle("mock-drawer-collapsed", enabled && state.mockDrawerCollapsed);
   elements.mockDrawer.setAttribute("aria-hidden", enabled ? "false" : "true");
-  elements.mockDrawerToggle.setAttribute("aria-expanded", enabled && !state.mockDrawerCollapsed ? "true" : "false");
 }
 
 function setLoading(isLoading) {
@@ -519,14 +510,6 @@ elements.styleMode.addEventListener("change", () => {
   }
 });
 elements.runMock.addEventListener("change", () => {
-  if (elements.runMock.checked) {
-    state.mockDrawerCollapsed = false;
-  }
-  syncMockDrawer();
-});
-elements.mockDrawerToggle.addEventListener("click", () => {
-  if (!elements.runMock.checked) return;
-  state.mockDrawerCollapsed = !state.mockDrawerCollapsed;
   syncMockDrawer();
 });
 elements.clearInput.addEventListener("click", () => {
@@ -535,7 +518,6 @@ elements.clearInput.addEventListener("click", () => {
   state.hasFreshResult = false;
   elements.styleMode.value = "standard";
   elements.runMock.checked = false;
-  state.mockDrawerCollapsed = false;
   renderOutputPlaceholder();
   setEmptyState("No audit has been run yet. Results will appear here after you submit code.");
   renderMockTest(null);
