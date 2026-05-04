@@ -762,14 +762,11 @@ def _group_line_issues(issues: list[Issue]) -> Issue:
     sorted_issues = sorted(issues, key=lambda item: (item.line or 0, item.column or 0))
     ranges = _line_ranges([issue.line for issue in sorted_issues if issue.line is not None])
     count = len(sorted_issues)
-    if count == 1:
-        suffix = "."
-    else:
-        location_text = _format_line_ranges(ranges)
-        suffix = f" across {count} lines ({location_text})." if location_text else f" across {count} lines."
+    location_text = _format_line_ranges(ranges)
+    message = _humanize_grouped_issue(sorted_issues[0].type, count, location_text)
     return Issue(
         sorted_issues[0].type,
-        f"{sorted_issues[0].message.rstrip('.')}{suffix}",
+        message,
         line=sorted_issues[0].line,
         column=sorted_issues[0].column,
         severity=sorted_issues[0].severity,
@@ -837,10 +834,11 @@ def _group_duplicate_import_statement_issues(issues: list[Issue]) -> list[Issue]
         sorted_bucket = sorted(bucket, key=lambda item: (item.line or 0, item.column or 0))
         ranges = _line_ranges([issue.line for issue in sorted_bucket if issue.line is not None])
         count = len(sorted_bucket)
+        display_signature = _humanize_import_signature(signature)
         if count == 1:
-            message = f"Removed duplicate import statement '{signature}'."
+            message = f"Removed a duplicate import: {display_signature}."
         else:
-            message = f"Removed duplicate import statement '{signature}' across {count} lines ({_format_line_ranges(ranges)})."
+            message = f"Removed duplicate imports for {display_signature} in {count} lines ({_format_line_ranges(ranges)})."
         grouped.append(
             Issue(
                 "imports",
@@ -891,6 +889,30 @@ def _first_quote_column(line: str) -> int | None:
         if char in {"'", '"'}:
             return index
     return None
+
+
+def _humanize_grouped_issue(issue_type: str, count: int, location_text: str) -> str:
+    count_text = "1 line" if count == 1 else f"{count} lines"
+    location_suffix = f" ({location_text})" if location_text else ""
+    if issue_type == "indentation":
+        return f"Fixed indentation in {count_text}{location_suffix}."
+    if issue_type == "missing_colons":
+        return f"Added missing colons in {count_text}{location_suffix}."
+    if issue_type == "quotes":
+        return f"Repaired broken string quotes in {count_text}{location_suffix}."
+    if issue_type == "unreachable_code":
+        return f"Found unreachable code in {count_text}{location_suffix}."
+    return f"Applied {issue_type.replace('_', ' ')} fixes in {count_text}{location_suffix}."
+
+
+def _humanize_import_signature(signature: str) -> str:
+    if signature.startswith("from "):
+        prefix, names = signature.split(" import ", 1)
+        _, module = prefix.split(":", 1)
+        return f"from {module} import {names.replace('|', ', ')}"
+    if signature.startswith("import "):
+        return signature.replace("|", ", ")
+    return signature
 
 
 def _is_docstring(node: ast.stmt) -> bool:
