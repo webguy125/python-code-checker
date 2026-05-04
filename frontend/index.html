@@ -22,20 +22,35 @@
         <strong>Sponsored placement</strong>
         <p>Reserved for a mock-test rail unit until sandbox results are available.</p>
       </aside>
+      <div class="mock-ad-stack" id="mock-ad-stack" hidden>
+        <aside class="ad-slot ad-slot-mock-compact" aria-label="Advertisement placeholder">
+          <span class="ad-label">Ad placeholder</span>
+          <strong>Rail sponsor</strong>
+        </aside>
+        <aside class="ad-slot ad-slot-mock-compact" aria-label="Advertisement placeholder">
+          <span class="ad-label">Ad placeholder</span>
+          <strong>Related placement</strong>
+        </aside>
+        <aside class="ad-slot ad-slot-mock" aria-label="Advertisement placeholder">
+          <span class="ad-label">Ad placeholder</span>
+          <strong>Extended placement</strong>
+          <p>Reserved for a long-form rail unit when mock output has nothing useful to show.</p>
+        </aside>
+      </div>
       <div id="mock-results" class="mock-results" hidden>
-        <div class="mock-section">
+        <div class="mock-section" id="mock-stdout-section">
           <h3>Output from mock run</h3>
-          <pre id="mock-stdout"><code>No output captured.</code></pre>
+          <pre id="mock-stdout"><code></code></pre>
         </div>
-        <div class="mock-section">
+        <div class="mock-section" id="mock-functions-section">
           <h3>Functions found in repaired code</h3>
           <div id="mock-functions" class="mock-functions"></div>
         </div>
-        <div class="mock-section">
+        <div class="mock-section" id="mock-called-section">
           <h3>Zero-argument functions executed</h3>
           <div id="mock-called-functions" class="mock-functions"></div>
         </div>
-        <div class="mock-section">
+        <div class="mock-section" id="mock-sample-section">
           <h3>Sample-called functions</h3>
           <div id="mock-sample-calls" class="sample-calls"></div>
         </div>

@@ -42,14 +42,19 @@ const elements = {
   cleanedOutput: document.getElementById("cleaned-output"),
   mockDrawer: document.getElementById("mock-drawer"),
   mockAdSlot: document.getElementById("mock-ad-slot"),
+  mockAdStack: document.getElementById("mock-ad-stack"),
   issuesList: document.getElementById("issues-list"),
   issuesEmpty: document.getElementById("issues-empty"),
   issuesDetail: document.getElementById("issues-detail"),
   resultSummary: document.getElementById("result-summary"),
   mockResults: document.getElementById("mock-results"),
+  mockStdoutSection: document.getElementById("mock-stdout-section"),
   mockStdout: document.getElementById("mock-stdout"),
+  mockFunctionsSection: document.getElementById("mock-functions-section"),
   mockFunctions: document.getElementById("mock-functions"),
+  mockCalledSection: document.getElementById("mock-called-section"),
   mockCalledFunctions: document.getElementById("mock-called-functions"),
+  mockSampleSection: document.getElementById("mock-sample-section"),
   mockSampleCalls: document.getElementById("mock-sample-calls"),
   mockErrorSection: document.getElementById("mock-error-section"),
   mockError: document.getElementById("mock-error"),
@@ -277,25 +282,29 @@ function renderMockTest(mockTest) {
   if (!mockTest) {
     elements.mockResults.hidden = true;
     elements.mockAdSlot.hidden = false;
+    elements.mockAdStack.hidden = true;
     return;
   }
 
-  elements.mockResults.hidden = false;
-  elements.mockAdSlot.hidden = true;
   const stdout = typeof mockTest.stdout === "string" && mockTest.stdout.trim()
     ? mockTest.stdout
-    : "No output was produced during the mock run.";
-  elements.mockStdout.innerHTML = `<code>${escapeHtml(stdout)}</code>`;
+    : "";
 
   const functions = Array.isArray(mockTest.functions_discovered) ? mockTest.functions_discovered : [];
   const autoCalled = Array.isArray(mockTest.functions_auto_called) ? mockTest.functions_auto_called : [];
   const sampleCalls = Array.isArray(mockTest.sample_calls) ? mockTest.sample_calls : [];
+  elements.mockStdoutSection.hidden = !stdout;
+  elements.mockStdout.innerHTML = stdout ? `<code>${escapeHtml(stdout)}</code>` : "<code></code>";
+
+  elements.mockFunctionsSection.hidden = !functions.length;
   elements.mockFunctions.innerHTML = functions.length
     ? functions.map((name) => `<span class="pill">${escapeHtml(name)}</span>`).join("")
-    : '<span class="pill">No user-defined functions found</span>';
+    : "";
+  elements.mockCalledSection.hidden = !autoCalled.length;
   elements.mockCalledFunctions.innerHTML = autoCalled.length
     ? autoCalled.map((name) => `<span class="pill">${escapeHtml(name)}</span>`).join("")
-    : '<span class="pill">No zero-argument functions were executed</span>';
+    : "";
+  elements.mockSampleSection.hidden = !sampleCalls.length;
   elements.mockSampleCalls.innerHTML = sampleCalls.length
     ? sampleCalls.map((call) => {
       const tone = call.status === "passed" ? "low" : "high";
@@ -304,17 +313,28 @@ function renderMockTest(mockTest) {
         : escapeHtml(call.error ?? "Failed");
       return `<article class="sample-call-card"><div class="issue-meta"><span class="pill ${tone}">${escapeHtml(call.status)}</span><span class="pill">${escapeHtml(call.name)}(${escapeHtml((call.args ?? []).join(", "))})</span></div><p class="issue-message">${detail}</p></article>`;
     }).join("")
-    : '<span class="pill">No sample calls were generated</span>';
+    : "";
 
   if (mockTest.error && typeof mockTest.error === "object") {
     elements.mockErrorSection.hidden = false;
     const lineText = mockTest.error.line ? `Line ${mockTest.error.line}: ` : "";
     elements.mockError.textContent = `${lineText}${mockTest.error.type}: ${mockTest.error.message}`;
-    return;
+  } else {
+    elements.mockErrorSection.hidden = true;
+    elements.mockError.textContent = "";
   }
 
-  elements.mockErrorSection.hidden = true;
-  elements.mockError.textContent = "";
+  const hasUsefulContent = Boolean(
+    stdout ||
+    functions.length ||
+    autoCalled.length ||
+    sampleCalls.length ||
+    !elements.mockErrorSection.hidden
+  );
+
+  elements.mockResults.hidden = !hasUsefulContent;
+  elements.mockAdSlot.hidden = true;
+  elements.mockAdStack.hidden = hasUsefulContent;
 }
 
 function syncMockDrawer() {

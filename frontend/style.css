@@ -461,6 +461,16 @@ textarea::placeholder {
   min-height: 132px;
 }
 
+.mock-ad-stack {
+  display: grid;
+  gap: 10px;
+}
+
+.ad-slot-mock-compact {
+  min-height: 72px;
+  padding: 12px 14px;
+}
+
 .output-panel {
   min-height: 460px;
 }
