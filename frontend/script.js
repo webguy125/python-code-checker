@@ -220,27 +220,30 @@ function renderIssues(issues) {
   elements.issuesList.hidden = false;
   elements.issuesEmpty.hidden = true;
   elements.issuesList.innerHTML = issues
-    .map((issue) => {
-      const location = issue.location ? `<span class="pill">${escapeHtml(issue.location)}</span>` : "";
-      const rule = issue.rule ? `<span class="pill">${escapeHtml(issue.rule)}</span>` : "";
-      const confidence = issue.confidence ? `<span class="pill confidence">${escapeHtml(issue.confidence)} confidence</span>` : "";
-      const snippet = issue.snippet
-        ? `<div class="issue-code">${escapeHtml(issue.snippet)}</div>`
-        : "";
-
+    .map((issue, index) => {
+      const locationText = issue.location || "No location";
+      const detailParts = [
+        issue.message,
+        issue.rule ? `Rule: ${issue.rule}` : "",
+        issue.confidence ? `Confidence: ${issue.confidence}` : "",
+        issue.snippet ? `Snippet: ${issue.snippet}` : "",
+      ].filter(Boolean);
+      const detailText = detailParts.join(" | ");
       return `
-        <article class="issue-card">
-          <div class="issue-top">
-            <h3 class="issue-title">${escapeHtml(issue.title)}</h3>
-            <div class="issue-meta">
-              <span class="pill ${issue.severity}">${escapeHtml(issue.severity)}</span>
-              ${location}
-              ${rule}
-              ${confidence}
-            </div>
+        <article class="issue-row ${issue.severity}" data-issue-row title="${escapeHtml(detailText)}">
+          <button type="button" class="issue-row-trigger" aria-expanded="false" data-issue-trigger="${index}">
+            <span class="issue-row-main">
+              <span class="issue-row-title">${escapeHtml(issue.title)}</span>
+              <span class="issue-row-location">${escapeHtml(locationText)}</span>
+            </span>
+            <span class="issue-row-side">
+              <span class="issue-row-rule">${escapeHtml(issue.rule || issue.severity)}</span>
+            </span>
+          </button>
+          <div class="issue-row-detail" hidden>
+            <p class="issue-row-message">${escapeHtml(issue.message)}</p>
+            ${issue.snippet ? `<div class="issue-code">${escapeHtml(issue.snippet)}</div>` : ""}
           </div>
-          <p class="issue-message">${escapeHtml(issue.message)}</p>
-          ${snippet}
         </article>
       `;
     })
@@ -486,6 +489,19 @@ elements.codeInput.addEventListener("input", () => {
 });
 
 elements.runAudit.addEventListener("click", runAudit);
+elements.issuesList.addEventListener("click", (event) => {
+  const trigger = event.target.closest("[data-issue-trigger]");
+  if (!trigger) return;
+  const row = trigger.closest("[data-issue-row]");
+  if (!row) return;
+  const detail = row.querySelector(".issue-row-detail");
+  const expanded = trigger.getAttribute("aria-expanded") === "true";
+  trigger.setAttribute("aria-expanded", expanded ? "false" : "true");
+  if (detail) {
+    detail.hidden = expanded;
+  }
+  row.classList.toggle("expanded", !expanded);
+});
 elements.loadSample.addEventListener("click", () => {
   setInput(SAMPLE_CODE);
   setStatus(elements.inputStatus, "Sample loaded", "ok");

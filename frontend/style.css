@@ -453,7 +453,10 @@ pre {
 
 .issues-list {
   display: grid;
-  gap: 10px;
+  gap: 6px;
+  max-height: 646px;
+  overflow: auto;
+  padding-right: 4px;
 }
 
 .mock-results {
@@ -484,30 +487,95 @@ pre {
   border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
-.issue-card {
-  border-radius: 14px;
-  padding: 12px 14px;
-  background: rgba(255, 255, 255, 0.035);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+.issues-card {
+  height: 100%;
+  min-height: 0;
 }
 
-.issue-top {
+.issue-row {
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  overflow: hidden;
+}
+
+.issue-row.high {
+  border-left: 3px solid rgba(251, 113, 133, 0.72);
+}
+
+.issue-row.medium {
+  border-left: 3px solid rgba(251, 191, 36, 0.72);
+}
+
+.issue-row.low {
+  border-left: 3px solid rgba(56, 189, 248, 0.72);
+}
+
+.issue-row-trigger {
+  width: 100%;
   display: flex;
   justify-content: space-between;
-  gap: 10px;
-  flex-wrap: wrap;
-  margin-bottom: 10px;
+  gap: 12px;
+  align-items: center;
+  padding: 8px 10px;
+  background: transparent;
+  color: inherit;
+  text-align: left;
 }
 
-.issue-title {
-  margin: 0;
-  font-weight: 700;
+.issue-row-trigger:hover {
+  background: rgba(255, 255, 255, 0.03);
 }
 
-.issue-meta {
+.issue-row-main,
+.issue-row-side {
+  min-width: 0;
+}
+
+.issue-row-main {
   display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
+  gap: 10px;
+  align-items: baseline;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.issue-row-title {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #f2f6ff;
+  white-space: nowrap;
+}
+
+.issue-row-location {
+  font-size: 0.76rem;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.issue-row-side {
+  flex: 0 0 auto;
+}
+
+.issue-row-rule {
+  font-size: 0.72rem;
+  color: #c7d3ec;
+  text-transform: lowercase;
+}
+
+.issue-row-detail {
+  padding: 0 10px 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(4, 9, 18, 0.46);
+}
+
+.issue-row-message {
+  margin: 8px 0 0;
+  color: #d9e3f7;
+  line-height: 1.45;
+  font-size: 0.8rem;
 }
 
 .pill {
