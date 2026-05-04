@@ -347,9 +347,8 @@ function renderMockIdleState(shouldShow) {
 }
 
 function syncMockDrawer() {
-  const enabled = elements.runMock.checked;
-  document.body.classList.toggle("mock-drawer-enabled", enabled);
-  elements.mockDrawer.setAttribute("aria-hidden", enabled ? "false" : "true");
+  document.body.classList.add("mock-drawer-enabled");
+  elements.mockDrawer.setAttribute("aria-hidden", "false");
 }
 
 function setLoading(isLoading) {
