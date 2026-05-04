@@ -783,9 +783,35 @@ pre {
   gap: 14px;
 }
 
+.network-section,
+.faq-section {
+  display: grid;
+}
+
 .info-card,
-.faq-card {
+.faq-card,
+.network-card,
+.doc-card {
   background: rgba(9, 15, 28, 0.72);
+}
+
+.network-links,
+.footer-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 14px;
+}
+
+.network-links a,
+.footer-links a {
+  color: #dff3ff;
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+}
+
+.network-links a:hover,
+.footer-links a:hover {
+  border-color: rgba(125, 211, 252, 0.58);
 }
 
 .faq-list {
@@ -811,6 +837,26 @@ pre {
   color: var(--muted);
   line-height: 1.55;
   font-size: 0.84rem;
+}
+
+.site-footer {
+  padding: 0 4px 8px;
+}
+
+.doc-page {
+  display: grid;
+  gap: 14px;
+}
+
+.doc-card p,
+.doc-card li {
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.doc-card ul {
+  margin: 0;
+  padding-left: 18px;
 }
 
 .sr-only {
