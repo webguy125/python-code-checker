@@ -242,6 +242,18 @@ body.mock-drawer-enabled .mock-drawer {
   gap: 14px;
 }
 
+.seo-intro {
+  padding: 0 4px;
+}
+
+.seo-intro p {
+  margin: 0;
+  max-width: 1080px;
+  color: #dbe6fb;
+  font-size: 0.92rem;
+  line-height: 1.6;
+}
+
 .workspace {
   display: grid;
   gap: 14px;
@@ -765,6 +777,42 @@ pre {
   font-size: 0.84rem;
 }
 
+.info-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.info-card,
+.faq-card {
+  background: rgba(9, 15, 28, 0.72);
+}
+
+.faq-list {
+  display: grid;
+  gap: 10px;
+}
+
+.faq-list details {
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.025);
+  padding: 12px 14px;
+}
+
+.faq-list summary {
+  cursor: pointer;
+  font-weight: 700;
+  color: #eef4ff;
+}
+
+.faq-list p {
+  margin: 10px 0 0;
+  color: var(--muted);
+  line-height: 1.55;
+  font-size: 0.84rem;
+}
+
 .sr-only {
   position: absolute;
   width: 1px;
@@ -784,7 +832,8 @@ pre {
 
   .layout,
   .workspace-top,
-  .workspace-bottom {
+  .workspace-bottom,
+  .info-grid {
     grid-template-columns: 1fr;
   }
 
