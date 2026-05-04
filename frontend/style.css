@@ -95,9 +95,15 @@ button {
   gap: 14px;
   align-items: stretch;
   margin-bottom: 14px;
+  padding: 18px 20px;
+  border-radius: calc(var(--radius-xl) + 8px);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  background: rgba(9, 15, 28, 0.78);
+  border: 1px solid var(--surface-line);
+  box-shadow: var(--shadow);
 }
 
-.hero-copy,
 .card,
 .ad-slot {
   backdrop-filter: blur(14px);
@@ -108,27 +114,26 @@ button {
 }
 
 .hero-copy {
-  border-radius: calc(var(--radius-xl) + 8px);
-  padding: 22px 24px;
+  padding: 0;
+  min-width: 0;
 }
 
 .hero-image-wrap {
-  overflow: hidden;
-  border-radius: calc(var(--radius-xl) + 8px);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-  background: rgba(9, 15, 28, 0.78);
-  border: 1px solid var(--surface-line);
-  box-shadow: var(--shadow);
-  min-height: 168px;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  min-width: 0;
 }
 
 .hero-image {
   display: block;
-  width: 100%;
+  width: auto;
   height: 100%;
-  object-fit: cover;
+  max-height: 138px;
+  max-width: 100%;
+  object-fit: contain;
   object-position: center;
+  border-radius: 12px;
 }
 
 .eyebrow,
@@ -597,14 +602,17 @@ pre {
   }
 
   .hero-copy,
-  .hero-image-wrap,
   .card,
   .ad-slot {
     border-radius: 16px;
   }
 
+  .hero {
+    padding: 14px;
+  }
+
   .hero-copy {
-    padding: 16px;
+    padding: 0;
   }
 
   .card {
