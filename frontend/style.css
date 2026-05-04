@@ -91,15 +91,12 @@ body.mock-drawer-enabled .page-shell {
   box-shadow: var(--shadow);
   display: grid;
   z-index: 4;
-  transform: translateX(calc(-100% - 12px));
-  opacity: 0;
+  visibility: hidden;
   pointer-events: none;
-  transition: transform 180ms ease, opacity 180ms ease;
 }
 
 body.mock-drawer-enabled .mock-drawer {
-  transform: translateX(0);
-  opacity: 1;
+  visibility: visible;
   pointer-events: auto;
 }
 
@@ -818,12 +815,7 @@ pre {
     top: auto;
     bottom: 6px;
     height: min(72vh, 560px);
-    transform: translateY(calc(100% + 18px));
     padding: 10px 12px 12px;
-  }
-
-  body.mock-drawer-enabled .mock-drawer {
-    transform: translateY(0);
   }
 
   .page-shell {
