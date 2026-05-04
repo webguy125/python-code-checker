@@ -146,10 +146,11 @@ button {
 }
 
 .lede {
-  max-width: 62ch;
+  max-width: none;
   margin: 12px 0 0;
-  font-size: 0.96rem;
-  line-height: 1.55;
+  font-size: 0.9rem;
+  line-height: 1.4;
+  white-space: nowrap;
 }
 
 .status-chip {
