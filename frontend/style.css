@@ -357,6 +357,11 @@ textarea::placeholder {
   flex-wrap: wrap;
 }
 
+.editor-footer-main {
+  display: grid;
+  gap: 8px;
+}
+
 .hint {
   font-size: 0.92rem;
 }

@@ -61,8 +61,24 @@
           ></textarea>
 
           <div class="editor-footer">
-            <div class="status-chip" id="input-status">Ready to audit</div>
-            <div class="hint">Tip: press Ctrl + Enter to run the audit.</div>
+            <div class="editor-footer-main">
+              <div class="status-chip" id="input-status">Ready to audit</div>
+              <div class="hint">Tip: press Ctrl + Enter to run the audit.</div>
+            </div>
+            <div class="card-actions">
+              <label class="select-option" for="style-mode">
+                <span>Style mode</span>
+                <select id="style-mode" name="style-mode">
+                  <option value="standard">Standard</option>
+                  <option value="pep8">PEP8</option>
+                </select>
+              </label>
+              <label class="toggle-option" for="run-mock">
+                <input type="checkbox" id="run-mock" name="run-mock">
+                <span>Run mock test</span>
+              </label>
+              <button type="button" class="primary-button" id="run-audit">Run audit</button>
+            </div>
           </div>
         </div>
 
@@ -79,19 +95,7 @@
               <h2>Cleaned code</h2>
             </div>
             <div class="card-actions">
-              <label class="select-option" for="style-mode">
-                <span>Style mode</span>
-                <select id="style-mode" name="style-mode">
-                  <option value="standard">Standard</option>
-                  <option value="pep8">PEP8</option>
-                </select>
-              </label>
-              <label class="toggle-option" for="run-mock">
-                <input type="checkbox" id="run-mock" name="run-mock">
-                <span>Run mock test</span>
-              </label>
               <button type="button" class="ghost-button" id="copy-output">Copy output</button>
-              <button type="button" class="primary-button" id="run-audit">Run audit</button>
             </div>
           </div>
 
