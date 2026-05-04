@@ -44,7 +44,6 @@ const elements = {
   issuesEmpty: document.getElementById("issues-empty"),
   issuesDetail: document.getElementById("issues-detail"),
   resultSummary: document.getElementById("result-summary"),
-  inputStatus: document.getElementById("input-status"),
   mockSummary: document.getElementById("mock-summary"),
   mockEmpty: document.getElementById("mock-empty"),
   mockResults: document.getElementById("mock-results"),
@@ -63,6 +62,7 @@ const state = {
 };
 
 function setStatus(target, text, tone = "neutral") {
+  if (!target) return;
   target.textContent = text;
   target.classList.remove("neutral", "ok", "warn", "error");
   target.classList.add(tone);
@@ -271,7 +271,6 @@ function renderResult(payload) {
   renderIssues(issues);
   renderMockTest(mockTest);
   setStatus(elements.resultSummary, summary, issues.length ? "warn" : "ok");
-  setStatus(elements.inputStatus, "Audit complete", issues.length ? "warn" : "ok");
 }
 
 function renderMockTest(mockTest) {
@@ -330,7 +329,7 @@ function setLoading(isLoading) {
   elements.loadSample.disabled = isLoading;
   elements.clearInput.disabled = isLoading;
   if (isLoading) {
-    setStatus(elements.inputStatus, "Running audit...", "neutral");
+    setStatus(elements.resultSummary, "Running audit...", "neutral");
   }
 }
 
@@ -411,7 +410,6 @@ async function runAudit() {
     renderResult(payload);
   } catch (error) {
     if (error.name === "AbortError") return;
-    setStatus(elements.inputStatus, "Audit failed", "error");
     setStatus(elements.resultSummary, error.message || "The audit request could not be completed.", "error");
     const payload = error.payload;
     const details = payload && typeof payload === "object" ? extractErrorDetails(payload) : null;
@@ -471,14 +469,12 @@ function markResultsStale() {
 }
 
 elements.codeInput.value = readSavedInput() || SAMPLE_CODE;
-setStatus(elements.inputStatus, elements.codeInput.value.trim() ? "Ready to audit" : "Paste Python code first", elements.codeInput.value.trim() ? "neutral" : "error");
 renderOutputPlaceholder();
 
 elements.codeInput.addEventListener("input", () => {
   saveInput(elements.codeInput.value);
   if (!elements.codeInput.value.trim()) {
     state.hasFreshResult = false;
-    setStatus(elements.inputStatus, "Paste Python code first", "error");
     setStatus(elements.resultSummary, "Waiting for first audit", "neutral");
     return;
   }
@@ -487,8 +483,6 @@ elements.codeInput.addEventListener("input", () => {
     markResultsStale();
     return;
   }
-
-  setStatus(elements.inputStatus, "Ready to audit", "neutral");
 });
 
 elements.runAudit.addEventListener("click", runAudit);
@@ -505,14 +499,13 @@ elements.issuesList.addEventListener("click", (event) => {
 });
 elements.loadSample.addEventListener("click", () => {
   setInput(SAMPLE_CODE);
-  setStatus(elements.inputStatus, "Sample loaded", "ok");
+  setStatus(elements.resultSummary, "Sample loaded", "ok");
 });
 elements.styleMode.addEventListener("change", () => {
   if (state.lastResultText) {
     markResultsStale();
     return;
   }
-  setStatus(elements.inputStatus, "Ready to audit", "neutral");
 });
 elements.clearInput.addEventListener("click", () => {
   setInput("");
@@ -524,7 +517,6 @@ elements.clearInput.addEventListener("click", () => {
   setEmptyState("No audit has been run yet. Results will appear here after you submit code.");
   renderMockTest(null);
   setStatus(elements.resultSummary, "Waiting for first audit", "neutral");
-  setStatus(elements.inputStatus, "Paste Python code first", "error");
 });
 elements.copyOutput.addEventListener("click", async () => {
   if (!state.hasFreshResult || !state.lastResultText.trim()) {
