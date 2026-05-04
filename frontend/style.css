@@ -407,9 +407,12 @@ textarea::placeholder {
   display: grid;
   gap: 10px;
   padding: 12px;
+  min-height: 0;
+  max-height: 228px;
   border-radius: 16px;
   border: 1px solid rgba(255, 255, 255, 0.08);
   background: rgba(255, 255, 255, 0.03);
+  overflow: hidden;
 }
 
 .card-head-compact {
@@ -477,11 +480,18 @@ pre {
 .mock-results {
   display: grid;
   gap: 10px;
+  min-height: 0;
+  overflow: auto;
+  padding-right: 4px;
 }
 
 .mock-section h3 {
   margin: 0 0 10px;
   font-size: 0.88rem;
+}
+
+.mock-section pre {
+  max-height: 92px;
 }
 
 .mock-functions {
