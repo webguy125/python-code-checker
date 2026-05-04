@@ -281,8 +281,8 @@ function renderResult(payload) {
 function renderMockTest(mockTest) {
   if (!mockTest) {
     elements.mockResults.hidden = true;
-    elements.mockAdSlot.hidden = false;
-    elements.mockAdStack.hidden = true;
+    elements.mockAdSlot.hidden = true;
+    elements.mockAdStack.hidden = false;
     return;
   }
 
