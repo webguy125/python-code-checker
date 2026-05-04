@@ -64,7 +64,7 @@ button {
 
 .mock-drawer {
   position: fixed;
-  left: 10px;
+  left: 0;
   top: 18px;
   bottom: 18px;
   width: min(320px, calc(100vw - 32px));
@@ -793,7 +793,7 @@ pre {
     width: min(300px, calc(100vw - 20px));
     top: 12px;
     bottom: 12px;
-    left: 10px;
+    left: 0;
   }
 }
 
