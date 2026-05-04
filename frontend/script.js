@@ -42,6 +42,7 @@ const elements = {
   cleanedOutput: document.getElementById("cleaned-output"),
   issuesList: document.getElementById("issues-list"),
   issuesEmpty: document.getElementById("issues-empty"),
+  issuesDetail: document.getElementById("issues-detail"),
   resultSummary: document.getElementById("result-summary"),
   inputStatus: document.getElementById("input-status"),
   mockSummary: document.getElementById("mock-summary"),
@@ -213,15 +214,19 @@ function renderIssues(issues) {
   if (!issues.length) {
     elements.issuesList.hidden = true;
     elements.issuesEmpty.hidden = false;
+    elements.issuesDetail.hidden = true;
+    elements.issuesDetail.textContent = "Select an issue to inspect more detail.";
     elements.issuesEmpty.textContent = "No issues were reported by the audit.";
     return;
   }
 
   elements.issuesList.hidden = false;
   elements.issuesEmpty.hidden = true;
+  elements.issuesDetail.hidden = false;
+  elements.issuesDetail.textContent = "Hover an issue for a quick summary or click one to pin its detail here.";
   elements.issuesList.innerHTML = issues
     .map((issue, index) => {
-      const locationText = issue.location || "No location";
+      const locationText = issue.location || "General";
       const detailParts = [
         issue.message,
         issue.rule ? `Rule: ${issue.rule}` : "",
@@ -231,19 +236,16 @@ function renderIssues(issues) {
       const detailText = detailParts.join(" | ");
       return `
         <article class="issue-row ${issue.severity}" data-issue-row title="${escapeHtml(detailText)}">
-          <button type="button" class="issue-row-trigger" aria-expanded="false" data-issue-trigger="${index}">
+          <button type="button" class="issue-row-trigger" data-issue-trigger="${index}" data-issue-detail="${escapeHtml(detailText)}">
             <span class="issue-row-main">
-              <span class="issue-row-title">${escapeHtml(issue.title)}</span>
+              <span class="issue-row-title">${escapeHtml(issue.title)}:</span>
+              <span class="issue-row-summary">${escapeHtml(issue.message)}</span>
               <span class="issue-row-location">${escapeHtml(locationText)}</span>
             </span>
             <span class="issue-row-side">
               <span class="issue-row-rule">${escapeHtml(issue.rule || issue.severity)}</span>
             </span>
           </button>
-          <div class="issue-row-detail" hidden>
-            <p class="issue-row-message">${escapeHtml(issue.message)}</p>
-            ${issue.snippet ? `<div class="issue-code">${escapeHtml(issue.snippet)}</div>` : ""}
-          </div>
         </article>
       `;
     })
@@ -253,6 +255,7 @@ function renderIssues(issues) {
 function setEmptyState(message) {
   elements.issuesList.hidden = true;
   elements.issuesEmpty.hidden = false;
+  elements.issuesDetail.hidden = true;
   elements.issuesEmpty.textContent = message;
 }
 
@@ -492,15 +495,13 @@ elements.runAudit.addEventListener("click", runAudit);
 elements.issuesList.addEventListener("click", (event) => {
   const trigger = event.target.closest("[data-issue-trigger]");
   if (!trigger) return;
-  const row = trigger.closest("[data-issue-row]");
-  if (!row) return;
-  const detail = row.querySelector(".issue-row-detail");
-  const expanded = trigger.getAttribute("aria-expanded") === "true";
-  trigger.setAttribute("aria-expanded", expanded ? "false" : "true");
-  if (detail) {
-    detail.hidden = expanded;
+  const detailText = trigger.getAttribute("data-issue-detail") || "No additional detail was provided.";
+  elements.issuesDetail.hidden = false;
+  elements.issuesDetail.textContent = detailText;
+  for (const activeTrigger of elements.issuesList.querySelectorAll(".issue-row-trigger.is-active")) {
+    activeTrigger.classList.remove("is-active");
   }
-  row.classList.toggle("expanded", !expanded);
+  trigger.classList.add("is-active");
 });
 elements.loadSample.addEventListener("click", () => {
   setInput(SAMPLE_CODE);

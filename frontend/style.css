@@ -203,10 +203,6 @@ button {
   gap: 14px;
 }
 
-.workspace-bottom {
-  grid-template-columns: 1fr;
-}
-
 .card,
 .ad-slot {
   border-radius: 18px;
@@ -401,6 +397,25 @@ textarea::placeholder {
   min-height: 112px;
 }
 
+.result-card {
+  display: grid;
+  grid-template-rows: auto auto auto;
+  gap: 12px;
+}
+
+.mock-embed {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.card-head-compact {
+  margin-bottom: 0;
+}
+
 .output-panel {
   min-height: 460px;
 }
@@ -453,10 +468,10 @@ pre {
 
 .issues-list {
   display: grid;
-  gap: 6px;
-  max-height: 646px;
+  gap: 2px;
+  max-height: 100%;
   overflow: auto;
-  padding-right: 4px;
+  padding-right: 2px;
 }
 
 .mock-results {
@@ -490,25 +505,29 @@ pre {
 .issues-card {
   height: 100%;
   min-height: 0;
+  max-height: 100%;
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr) auto auto;
+  gap: 10px;
 }
 
 .issue-row {
-  border-radius: 10px;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 8px;
+  background: transparent;
+  border: 0;
   overflow: hidden;
 }
 
 .issue-row.high {
-  border-left: 3px solid rgba(251, 113, 133, 0.72);
+  box-shadow: inset 2px 0 0 rgba(251, 113, 133, 0.72);
 }
 
 .issue-row.medium {
-  border-left: 3px solid rgba(251, 191, 36, 0.72);
+  box-shadow: inset 2px 0 0 rgba(251, 191, 36, 0.72);
 }
 
 .issue-row.low {
-  border-left: 3px solid rgba(56, 189, 248, 0.72);
+  box-shadow: inset 2px 0 0 rgba(56, 189, 248, 0.72);
 }
 
 .issue-row-trigger {
@@ -517,14 +536,19 @@ pre {
   justify-content: space-between;
   gap: 12px;
   align-items: center;
-  padding: 8px 10px;
+  min-height: 30px;
+  padding: 4px 8px 4px 12px;
   background: transparent;
   color: inherit;
   text-align: left;
 }
 
 .issue-row-trigger:hover {
-  background: rgba(255, 255, 255, 0.03);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.issue-row-trigger.is-active {
+  background: rgba(125, 211, 252, 0.1);
 }
 
 .issue-row-main,
@@ -534,25 +558,33 @@ pre {
 
 .issue-row-main {
   display: flex;
-  gap: 10px;
-  align-items: baseline;
+  gap: 8px;
+  align-items: center;
   min-width: 0;
   flex: 1 1 auto;
 }
 
 .issue-row-title {
-  font-size: 0.8rem;
+  font-size: 0.74rem;
   font-weight: 700;
   color: #f2f6ff;
   white-space: nowrap;
 }
 
-.issue-row-location {
-  font-size: 0.76rem;
-  color: var(--muted);
+.issue-row-summary {
+  min-width: 0;
+  font-size: 0.74rem;
+  color: #d9e3f7;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.issue-row-location {
+  font-size: 0.7rem;
+  color: var(--muted);
+  white-space: nowrap;
+  flex: 0 0 auto;
 }
 
 .issue-row-side {
@@ -560,22 +592,20 @@ pre {
 }
 
 .issue-row-rule {
-  font-size: 0.72rem;
+  font-size: 0.68rem;
   color: #c7d3ec;
   text-transform: lowercase;
 }
 
-.issue-row-detail {
-  padding: 0 10px 10px;
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
-  background: rgba(4, 9, 18, 0.46);
-}
-
-.issue-row-message {
-  margin: 8px 0 0;
+.issues-detail {
+  min-height: 58px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.035);
   color: #d9e3f7;
+  font-size: 0.76rem;
   line-height: 1.45;
-  font-size: 0.8rem;
 }
 
 .pill {

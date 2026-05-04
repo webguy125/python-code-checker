@@ -78,11 +78,41 @@
             <div class="code-frame">
               <div id="cleaned-output" class="output-panel" aria-live="polite"></div>
             </div>
-            <aside class="ad-slot ad-slot-output" aria-label="Advertisement placeholder">
-              <span class="ad-label">Ad placeholder</span>
-              <strong>Sponsored placement</strong>
-              <p>Reserved for a responsive ad unit directly beneath the cleaned code output.</p>
-            </aside>
+            <div class="mock-embed">
+              <div class="card-head card-head-compact">
+                <div>
+                  <p class="card-kicker">Mock Test</p>
+                  <h2>Sandbox execution</h2>
+                </div>
+                <div class="status-chip neutral" id="mock-summary">Mock test not requested</div>
+              </div>
+
+              <div id="mock-empty" class="empty-state">
+                Enable “Run mock test” to execute the repaired script in a restricted sandbox and capture output.
+              </div>
+              <div id="mock-results" class="mock-results" hidden>
+                <div class="mock-section">
+                  <h3>Output from mock run</h3>
+                  <pre id="mock-stdout"><code>No output captured.</code></pre>
+                </div>
+                <div class="mock-section">
+                  <h3>Functions found in repaired code</h3>
+                  <div id="mock-functions" class="mock-functions"></div>
+                </div>
+                <div class="mock-section">
+                  <h3>Zero-argument functions executed</h3>
+                  <div id="mock-called-functions" class="mock-functions"></div>
+                </div>
+                <div class="mock-section">
+                  <h3>Sample-called functions</h3>
+                  <div id="mock-sample-calls" class="sample-calls"></div>
+                </div>
+                <div class="mock-section" id="mock-error-section" hidden>
+                  <h3>Runtime error</h3>
+                  <div id="mock-error" class="empty-state"></div>
+                </div>
+              </div>
+            </div>
           </div>
 
           <div class="card issues-card">
@@ -98,6 +128,12 @@
               No audit has been run yet. Results will appear here after you submit code.
             </div>
             <div id="issues-list" class="issues-list" hidden></div>
+            <div id="issues-detail" class="issues-detail" hidden>Select an issue to inspect more detail.</div>
+            <aside class="ad-slot ad-slot-output" aria-label="Advertisement placeholder">
+              <span class="ad-label">Ad placeholder</span>
+              <strong>Sponsored placement</strong>
+              <p>Reserved for a responsive ad unit directly beneath the findings list.</p>
+            </aside>
           </div>
         </div>
 
@@ -106,44 +142,6 @@
           <strong>Sponsored placement</strong>
           <p>Reserved for a responsive ad unit. This slot stays visible without interrupting the workflow.</p>
         </aside>
-
-        <div class="workspace-bottom">
-          <div class="card mock-card">
-            <div class="card-head">
-              <div>
-                <p class="card-kicker">Mock Test</p>
-                <h2>Sandbox execution</h2>
-              </div>
-              <div class="status-chip neutral" id="mock-summary">Mock test not requested</div>
-            </div>
-
-            <div id="mock-empty" class="empty-state">
-              Enable “Run mock test” to execute the repaired script in a restricted sandbox and capture output.
-            </div>
-            <div id="mock-results" class="mock-results" hidden>
-              <div class="mock-section">
-                <h3>Output from mock run</h3>
-                <pre id="mock-stdout"><code>No output captured.</code></pre>
-              </div>
-              <div class="mock-section">
-                <h3>Functions found in repaired code</h3>
-                <div id="mock-functions" class="mock-functions"></div>
-              </div>
-              <div class="mock-section">
-                <h3>Zero-argument functions executed</h3>
-                <div id="mock-called-functions" class="mock-functions"></div>
-              </div>
-              <div class="mock-section">
-                <h3>Sample-called functions</h3>
-                <div id="mock-sample-calls" class="sample-calls"></div>
-              </div>
-              <div class="mock-section" id="mock-error-section" hidden>
-                <h3>Runtime error</h3>
-                <div id="mock-error" class="empty-state"></div>
-              </div>
-            </div>
-          </div>
-        </div>
       </section>
 
     </main>
