@@ -90,15 +90,12 @@ button {
 }
 
 .hero {
-  display: grid;
-  grid-template-columns: minmax(0, 1.6fr) minmax(280px, 0.9fr);
-  gap: 14px;
+  display: block;
   align-items: stretch;
   margin-bottom: 14px;
 }
 
 .hero-copy,
-.hero-panel,
 .card,
 .ad-slot {
   backdrop-filter: blur(14px);
@@ -135,7 +132,8 @@ button {
 .hero h1 {
   font-size: clamp(1.95rem, 3vw, 3.2rem);
   line-height: 0.96;
-  max-width: 14ch;
+  max-width: none;
+  white-space: nowrap;
 }
 
 .lede,
@@ -154,14 +152,6 @@ button {
   line-height: 1.55;
 }
 
-.hero-stats {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 14px;
-}
-
-.hero-stats span,
 .status-chip {
   display: inline-flex;
   align-items: center;
@@ -172,36 +162,6 @@ button {
   border: 1px solid rgba(255, 255, 255, 0.08);
   color: var(--text);
   font-size: 0.84rem;
-}
-
-.hero-panel {
-  border-radius: calc(var(--radius-xl) + 8px);
-  padding: 12px;
-}
-
-.accent-card {
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  min-height: 148px;
-  border-radius: var(--radius-lg);
-  background:
-    linear-gradient(160deg, rgba(56, 189, 248, 0.18), rgba(16, 27, 49, 0.93) 55%),
-    rgba(9, 15, 28, 0.95);
-  border: 1px solid rgba(125, 211, 252, 0.18);
-  padding: 14px;
-}
-
-.panel-title {
-  font-size: 1.2rem;
-  margin-bottom: 8px;
-}
-
-.panel-text {
-  margin: 0;
-  line-height: 1.5;
-  font-size: 0.9rem;
 }
 
 .layout {
@@ -596,7 +556,6 @@ pre {
 }
 
 @media (max-width: 1080px) {
-  .hero,
   .layout,
   .workspace-top,
   .workspace-bottom {
@@ -616,7 +575,6 @@ pre {
 
   .hero-copy,
   .card,
-  .hero-panel,
   .ad-slot {
     border-radius: 16px;
   }
